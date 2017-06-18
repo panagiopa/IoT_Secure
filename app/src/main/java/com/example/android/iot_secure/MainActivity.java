@@ -185,7 +185,7 @@ public class MainActivity extends AppCompatActivity
 
     public void aes_test()
     {
-        String s = "heloooo";
+        String s = "hello world 1234435675478658657356346543";
         byte[] b = s.getBytes();
         Log.d("AES",Arrays.toString(b));
         try {
