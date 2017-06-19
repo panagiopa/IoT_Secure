@@ -4,12 +4,16 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.androidquery.AQuery;
+import com.androidquery.callback.AjaxCallback;
 import com.androidquery.callback.AjaxStatus;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by elite on 18/6/2017.
@@ -24,7 +28,7 @@ public class AjaxReq {
         this.aq = aq;
     }
 
-    public void AjaxRequest(String url)
+    public void AjaxGetRequest(String url)
     {
         //String url = "http://192.168.10.4/test.php?id=1";
         //Make Asynchronous call using AJAX method
@@ -72,7 +76,23 @@ public class AjaxReq {
                 Toast.makeText(aq.getContext(),"Unexpected Error occurred",Toast.LENGTH_SHORT).show();
             }
         }
+    }
 
+    public  void test()
+    {
+        String url = "http://search.twitter.com/search.json";
 
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("q", "androidquery");
+        Log.d("POST",url);
+        aq.ajax(url, params, JSONObject.class, new AjaxCallback<JSONObject>() {
+
+            @Override
+            public void callback(String url, JSONObject json, AjaxStatus status) {
+
+                Log.d("POST",json.toString());
+
+            }
+        });
     }
 }

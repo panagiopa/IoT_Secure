@@ -17,22 +17,20 @@ import android.view.Menu;
 import android.view.MenuItem;
 import com.androidquery.AQuery;
 
-
-import java.security.Key;
-
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
 
-import javax.crypto.Cipher;
-
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-
-
+//TODO Login screen
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     private AQuery aq;
     private AjaxReq ajaxreq;
+    private AESGCM aes;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,8 +59,15 @@ public class MainActivity extends AppCompatActivity
         aq = new AQuery(this);
         ajaxreq = new AjaxReq(aq);
 
-        test();
+        try {
+            test();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         start();
+
+
+        aes = new AESGCM("BD6BE71BF6C229E4684129527334CE6F".getBytes());
 
         aes_test();
 
@@ -125,12 +130,22 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    public void test()
-    {
+    public void test() throws IOException {
         String url = "http://192.168.10.4/test.php?id=1";
-        ajaxreq.AjaxRequest(url);
+        ajaxreq.AjaxGetRequest(url);
 
         Log.d("TEST", "arr: " + Arrays.toString(ajaxreq.getRetObj()));
+
+        ajaxreq.test();
+//TODO TEST login credentials
+        URL url1 = new URL("http://10.0.1.75");
+        HttpURLConnection urlConnection = (HttpURLConnection) url1.openConnection();
+        try {
+            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+            Log.d("SITE",in.toString());
+        } finally {
+            urlConnection.disconnect();
+        }
 
     }
 
@@ -157,30 +172,7 @@ public class MainActivity extends AppCompatActivity
         handler.postDelayed(runnable, 5000);
     }
 
-    byte[] b = "CC37B4C4EBFBAF9788D34DA1AF2A0984".getBytes();
 
-    Key key = new SecretKeySpec(b ,"AES");
-    // the output is sent to users
-    byte[] encrypt(byte[] src) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, key);
-        byte[] iv = cipher.getIV(); // See question #1
-        assert iv.length == 12; // See question #2
-        byte[] cipherText = cipher.doFinal(src);
-        assert cipherText.length == src.length + 16; // See question #3
-        byte[] message = new byte[12 + src.length + 16]; // See question #4
-        System.arraycopy(iv, 0, message, 0, 12);
-        System.arraycopy(cipherText, 0, message, 12, cipherText.length);
-        return message;
-    }
-
-    byte[] decrypt(byte[] message) throws Exception {
-        if (message.length < 12 + 16) throw new IllegalArgumentException();
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        GCMParameterSpec params = new GCMParameterSpec(128, message, 0, 12);
-        cipher.init(Cipher.DECRYPT_MODE, key, params);
-        return cipher.doFinal(message, 12, message.length - 12);
-    }
 
 
     public void aes_test()
@@ -189,16 +181,14 @@ public class MainActivity extends AppCompatActivity
         byte[] b = s.getBytes();
         Log.d("AES",Arrays.toString(b));
         try {
-            byte[] cipher = encrypt(b);
+            byte[] cipher = aes.encrypt(b);
             Log.d("AES",Arrays.toString(cipher));
 
-            byte[] plaintext = decrypt(cipher);
+            byte[] plaintext = aes.decrypt(cipher);
             Log.d("AES",Arrays.toString(plaintext));
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
 
     }
 
