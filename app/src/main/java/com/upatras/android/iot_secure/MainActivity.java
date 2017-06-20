@@ -1,4 +1,4 @@
-package com.example.android.iot_secure;
+package com.upatras.android.iot_secure;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,6 +16,7 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import com.androidquery.AQuery;
+import com.upatras.android.iot_secure.R;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -58,13 +59,14 @@ public class MainActivity extends AppCompatActivity
         //Instantiate AQuery Object
         aq = new AQuery(this);
         ajaxreq = new AjaxReq(aq);
-
+/*
         try {
             test();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        start();
+        */
+      //  start();
 
 
         aes = new AESGCM("BD6BE71BF6C229E4684129527334CE6F".getBytes());

@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.example.android.iot_secure.MainActivity">
+    tools:context="com.upatras.android.iot_secure.MainActivity">
 
     <android.support.design.widget.AppBarLayout
         android:layout_width="match_parent"

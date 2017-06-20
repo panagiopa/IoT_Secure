@@ -1,4 +1,4 @@
-package com.example.android.iot_secure;
+package com.upatras.android.iot_secure;
 
 /**
  * Created by elite on 19-Jun-17.

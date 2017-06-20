@@ -1,4 +1,4 @@
-package com.example.android.iot_secure;
+package com.upatras.android.iot_secure;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getTargetContext();
 
-        assertEquals("com.example.android.iot_secure", appContext.getPackageName());
+        assertEquals("com.upatras.android.iot_secure", appContext.getPackageName());
     }
 }
