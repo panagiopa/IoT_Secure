@@ -16,6 +16,7 @@
 
 package com.upatras.android.iot_secure;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
@@ -77,6 +78,7 @@ public class EmailPasswordActivity extends BaseActivity implements
     }
     // [END on_start_check_user]
 
+    //TODO PAIR DEVICE!!!!
     private void createAccount(String email, String password) {
         Log.d(TAG, "createAccount:" + email);
         if (!validateForm()) {
@@ -218,6 +220,10 @@ public class EmailPasswordActivity extends BaseActivity implements
             findViewById(R.id.signed_in_buttons).setVisibility(View.VISIBLE);
 
             findViewById(R.id.verify_email_button).setEnabled(!user.isEmailVerified());
+
+            Intent main = new Intent(this,MainActivity.class);
+            this.finish(); //nohistory = true no need to call
+            startActivity(main);
         } else {
             mStatusTextView.setText(R.string.signed_out);
             mDetailTextView.setText(null);
