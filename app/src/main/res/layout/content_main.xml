@@ -13,6 +13,8 @@
     android:orientation="vertical"
     android:weightSum="4">
 
+
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -44,6 +46,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Test Command" />
+
+        <TextView
+            android:id="@+id/textrealtest"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="13"
+            android:text="TextView"
+            tools:text="TEST" />
 
     </LinearLayout>
 

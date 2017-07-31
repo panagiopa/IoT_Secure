@@ -1,11 +1,13 @@
 package com.upatras.android.iot_secure;
 
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -20,17 +22,16 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.androidquery.AQuery;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 
@@ -39,16 +40,16 @@ public class MainActivity extends AppCompatActivity
 
     private TextView mStatusTextView;
     private TextView mDetailTextView;
-
+    private TextView mRealDataTextView;
     private TextView mEmailTextView;
     private Button testButton;
 
-    private AQuery aq;
-    private AjaxReq ajaxreq;
+
     private AESGCM aes;
+    private AESCBC aesreal;
     private FirebaseAuth mAuth;
     // [START declare_database_ref]
-    private DatabaseReference mDatabase;
+    private DatabaseReference rootDatabase;
     // [END declare_database_ref]
 
     @Override
@@ -88,6 +89,7 @@ public class MainActivity extends AppCompatActivity
             mEmailTextView = (TextView) headerView.findViewById(R.id.textUserEmail);
             mStatusTextView = (TextView) findViewById(R.id.status);
             mDetailTextView = (TextView) findViewById(R.id.detail);
+            mRealDataTextView = (TextView) findViewById(R.id.textrealtest);
 
             mStatusTextView.setText(getString(R.string.emailpassword_status_fmt,
                     currentUser.getEmail(), currentUser.isEmailVerified()));
@@ -106,9 +108,6 @@ Log.d("Login", currentUser.getEmail());
                 }
             });
 
-            //Instantiate AQuery Object
-            aq = new AQuery(this);
-            ajaxreq = new AjaxReq(aq);
     /*
             try {
                 test();
@@ -119,20 +118,66 @@ Log.d("Login", currentUser.getEmail());
             //  start();
 
             aes = new AESGCM("BD6BE71BF6C229E4684129527334CE6F".getBytes());
+            String guid = "";
+            byte[] kk = Base64.decode(guid, Base64.DEFAULT);
+
+            aesreal = new AESCBC("5c736dfa2cb7b88ce9893ba0312b9ad6".getBytes());
 
             aes_test();
 
             // [START initialize_database_ref]
-            mDatabase = FirebaseDatabase.getInstance().getReference();
+            rootDatabase = FirebaseDatabase.getInstance().getReference();
+            //get reference
+            trydb();
             // [END initialize_database_ref]
 
-
-            writeNewUser(currentUser.getUid(), "test",currentUser.getEmail());
+            //TODO create a protected database
+            String query = "select sqlite_version() AS sqlite_version";
+            SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(":memory:", null);
+            Cursor cursor = db.rawQuery(query, null);
+            String sqliteVersion = "";
+            if (cursor.moveToNext()) {
+                sqliteVersion = cursor.getString(0);
+            }
+            Log.d("SQLite",sqliteVersion);
+            //writeNewUser(currentUser.getUid(), "test",currentUser.getEmail());
         }else
         {
             signOut();
         }
 
+    }
+    //TODO visualize data
+    private  void trydb()
+    {
+        DatabaseReference test = rootDatabase.child("realtime").child("measures");
+        test.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                String text = dataSnapshot.getValue(String.class);
+                Log.d("DATABASE",text);
+
+                byte[] plaintext = new byte[0];
+                try {
+                    byte[] headerSaltAndCipherText = Base64.decode(text, Base64.DEFAULT);
+                    plaintext = aesreal.decrypt(headerSaltAndCipherText);
+                    String str = new String(plaintext, StandardCharsets.UTF_8);
+                    String[] separated = str.split(",");
+                    mRealDataTextView.setText("Temperature="+separated[0] +"\nHumidity" + separated[1]);
+                    Log.d("DATABASE",str);
+                } catch (Exception e) {
+                    Log.d("DATABASE","FAIL");
+                    e.printStackTrace();
+                }
+
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
     }
 
     @Override
@@ -201,52 +246,6 @@ Log.d("Login", currentUser.getEmail());
 
     }
 
-    //TODO may remove aquery completly or use only in pairing
-    public void test() throws IOException {
-        String url = "http://192.168.10.4/test.php?id=1";
-        ajaxreq.AjaxGetRequest(url);
-
-        Log.d("TEST", "arr: " + Arrays.toString(ajaxreq.getRetObj()));
-
-        ajaxreq.test();
-//TODO TEST login credentials
-        URL url1 = new URL("http://10.0.1.75");
-        HttpURLConnection urlConnection = (HttpURLConnection) url1.openConnection();
-        try {
-            InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-            Log.d("SITE",in.toString());
-        } finally {
-            urlConnection.disconnect();
-        }
-
-    }
-
-    private boolean started = false;
-    private Handler handler = new Handler();
-
-    private Runnable runnable = new Runnable() {
-        @Override
-        public void run() {
-            Log.d("TEST", "arr: " + Arrays.toString(ajaxreq.getRetObj()));
-            if(started) {
-                start();
-            }
-        }
-    };
-
-    public void stop() {
-        started = false;
-        handler.removeCallbacks(runnable);
-    }
-
-    public void start() {
-        started = true;
-        handler.postDelayed(runnable, 5000);
-    }
-
-
-
-
     public void aes_test()
     {
         String s = "hello world 1234435675478658657356346543";
@@ -264,14 +263,14 @@ Log.d("Login", currentUser.getEmail());
 
     }
 
-
+/*
     private void writeNewUser(String userId, String name, String email) {
         //TODO save user IVs for data exchange
 
         mDatabase.child("users").child(userId).child("email").setValue(email);
         mDatabase.child("users").child(userId).child("username").setValue(name);
     }
-
+*/
     //TODO Execute one and only Command
     private void ExecuteCmd()
     {
