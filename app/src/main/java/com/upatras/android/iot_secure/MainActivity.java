@@ -33,7 +33,6 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -50,6 +49,9 @@ public class MainActivity extends AppCompatActivity
     // [START declare_database_ref]
     private DatabaseReference rootDatabase;
     // [END declare_database_ref]
+    private FirebaseUser currentUser;
+
+    private String CMDCounter = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,8 +60,8 @@ public class MainActivity extends AppCompatActivity
         // [START initialize_auth]
         mAuth = FirebaseAuth.getInstance();
         // [END initialize_auth]
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if(currentUser!=null) {
+        currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
             setContentView(R.layout.activity_main);
             Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
             setSupportActionBar(toolbar);
@@ -94,9 +96,9 @@ public class MainActivity extends AppCompatActivity
                     currentUser.getEmail(), currentUser.isEmailVerified()));
             mDetailTextView.setText(getString(R.string.firebase_status_fmt, currentUser.getUid()));
 
-            if(mEmailTextView!=null)
+            if (mEmailTextView != null)
                 mEmailTextView.setText(currentUser.getEmail());
-Log.d("Login", currentUser.getEmail());
+            Log.d("Login", currentUser.getEmail());
 
 
             testButton = (Button) findViewById(R.id.buttonTest);
@@ -111,7 +113,7 @@ Log.d("Login", currentUser.getEmail());
             aes = new AESGCM("BD6BE71BF6C229E4684129527334CE6F".getBytes());
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("255ef6bc65bc949028cd2d882a4144bd".getBytes());
+            mAESCBC = new AESCBC("02c7bd67410dd84e19b81616700a2401".getBytes());
 
             aes_test();
 
@@ -121,6 +123,11 @@ Log.d("Login", currentUser.getEmail());
             update_measures();
             // [END initialize_database_ref]
 
+            getMeasures("2017", "8", "2", "01");
+
+            //maintain Commands COunter
+            MaintainCMDCounterCloud();
+
             //TODO create a protected database
             String query = "select sqlite_version() AS sqlite_version";
             SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(":memory:", null);
@@ -129,35 +136,29 @@ Log.d("Login", currentUser.getEmail());
             if (cursor.moveToNext()) {
                 sqliteVersion = cursor.getString(0);
             }
-            Log.d("SQLite",sqliteVersion);
+            Log.d("SQLite", sqliteVersion);
             //writeNewUser(currentUser.getUid(), "test",currentUser.getEmail());
-        }else
-        {
+        } else {
             signOut();
         }
 
     }
-    //TODO visualize data
-    private  void update_measures()
-    {
-        DatabaseReference test = rootDatabase.child("realtime").child("measures");
-        test.addValueEventListener(new ValueEventListener() {
+
+
+    //TODO get massive data
+    private void getMeasures(String year, String month, String day, String hour) {
+        DatabaseReference measures = rootDatabase.child("measures").child(year).child(month).child(day).child(hour);
+        measures.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                String text = dataSnapshot.getValue(String.class);
-                Log.d("DATABASE",text);
-
-                byte[] plaintext = new byte[0];
-                try {
-                    byte[] headerSaltAndCipherText = Base64.decode(text, Base64.DEFAULT);
-                    plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
-                    String str = new String(plaintext, StandardCharsets.UTF_8);
-                    String[] separated = str.split(",");
-                    mRealDataTextView.setText("Temperature="+separated[0] +"\nHumidity" + separated[1]);
-                    Log.d("DATABASE",str);
-                } catch (Exception e) {
-                    Log.d("DATABASE","FAIL");
-                    e.printStackTrace();
+                Iterable<DataSnapshot> it = dataSnapshot.getChildren();
+                String cipher = "";
+                String time = "";
+                Log.d("MASSIVE", time + "=" + cipher);
+                for (DataSnapshot t : it) {
+                    cipher = t.getValue(String.class);
+                    time = t.getKey();
+                    Log.d("MASSIVE", time + "=" + cipher);
                 }
             }
 
@@ -165,7 +166,49 @@ Log.d("Login", currentUser.getEmail());
             public void onCancelled(DatabaseError databaseError) {
 
             }
+
         });
+
+    }
+
+    //TODO visualize data
+    private void update_measures() {
+        DatabaseReference measures = rootDatabase.child("realtime");
+        measures.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Iterable<DataSnapshot> it = dataSnapshot.getChildren();
+                String cipher = "";
+                String time = "";
+
+                for (DataSnapshot t : it) {
+                    cipher = t.getValue(String.class);
+                    time = t.getKey();
+                }
+
+                Log.d("DATABASE", time + "=" + cipher);
+
+                byte[] plaintext = new byte[0];
+                try {
+                    byte[] headerSaltAndCipherText = Base64.decode(cipher, Base64.DEFAULT);
+                    plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
+                    String str = new String(plaintext, StandardCharsets.UTF_8);
+                    String[] separated = str.split(",");
+                    mRealDataTextView.setText("Temperature=" + separated[0] + "\nHumidity" + separated[1]);
+                    Log.d("DATABASE", str);
+                } catch (Exception e) {
+                    Log.d("DATABASE", "FAIL");
+                    e.printStackTrace();
+                }
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
     }
 
     @Override
@@ -217,7 +260,7 @@ Log.d("Login", currentUser.getEmail());
         } else if (id == R.id.nav_share) {
 
         } else if (id == R.id.nav_logout) {
-            Toast.makeText(this, "Logging out",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Logging out", Toast.LENGTH_SHORT).show();
             signOut();
         }
 
@@ -234,17 +277,16 @@ Log.d("Login", currentUser.getEmail());
 
     }
 
-    public void aes_test()
-    {
+    public void aes_test() {
         String s = "hello world 1234435675478658657356346543";
         byte[] b = s.getBytes();
-        Log.d("AES",Arrays.toString(b));
+        Log.d("AES", Arrays.toString(b));
         try {
             byte[] cipher = aes.encrypt(b);
-            Log.d("AES",Arrays.toString(cipher));
+            Log.d("AES", Arrays.toString(cipher));
 
             byte[] plaintext = aes.decrypt(cipher);
-            Log.d("AES",Arrays.toString(plaintext));
+            Log.d("AES", Arrays.toString(plaintext));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -252,12 +294,11 @@ Log.d("Login", currentUser.getEmail());
     }
 
     //TODO Execute one and only Command
-    private void ExecuteCmd()
-    {
-        Toast.makeText(this, "Executing Command",Toast.LENGTH_SHORT).show();
+    private void ExecuteCmd() {
+        Toast.makeText(this, "Executing Command", Toast.LENGTH_SHORT).show();
         //TODO ask for cloud Command Counter IV
-
-
+        //COMMAND IS MAINTAIN NO NEED FOR ASK
+        Log.d("COMMAND", CMDCounter);
         //TODO send encrypted data to cloud
 
 
@@ -269,4 +310,22 @@ Log.d("Login", currentUser.getEmail());
 
     }
 
+    //TODO ask cloud single DATA
+    private void MaintainCMDCounterCloud() {
+
+        DatabaseReference MaintainCMDCounters = rootDatabase.child("users").child(currentUser.getUid()).child("CMDToggle");
+        MaintainCMDCounters.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Integer test = dataSnapshot.getValue(Integer.class);
+                Log.d("COMMAND", test.toString());
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+    }
 }
