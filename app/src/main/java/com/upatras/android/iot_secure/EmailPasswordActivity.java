@@ -81,12 +81,15 @@ public class EmailPasswordActivity extends BaseActivity implements
     //TODO PAIR DEVICE!!!!
     private void createAccount(String email, String password) {
         Log.d(TAG, "createAccount:" + email);
-        if (!validateForm()) {
-            return;
-        }
+      //  if (!validateForm()) {
+     //       return;
+     //   }
 
-        showProgressDialog();
-
+        //showProgressDialog();
+        //hideProgressDialog();
+        Toast.makeText(EmailPasswordActivity.this, "PAIRING DEVICE.",
+                Toast.LENGTH_SHORT).show();
+/*
         // [START create_user_with_email]
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
@@ -111,6 +114,7 @@ public class EmailPasswordActivity extends BaseActivity implements
                     }
                 });
         // [END create_user_with_email]
+        */
     }
 
     private void signIn(String email, String password) {

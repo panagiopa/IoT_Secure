@@ -34,7 +34,6 @@ import com.google.firebase.database.ValueEventListener;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -46,7 +45,7 @@ public class MainActivity extends AppCompatActivity
 
 
     private AESGCM aes;
-    private AESCBC aesreal;
+    private AESCBC mAESCBC;
     private FirebaseAuth mAuth;
     // [START declare_database_ref]
     private DatabaseReference rootDatabase;
@@ -108,27 +107,18 @@ Log.d("Login", currentUser.getEmail());
                 }
             });
 
-    /*
-            try {
-                test();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            */
-            //  start();
-
+            //GCM TEST
             aes = new AESGCM("BD6BE71BF6C229E4684129527334CE6F".getBytes());
-            String guid = "";
-            byte[] kk = Base64.decode(guid, Base64.DEFAULT);
 
-            aesreal = new AESCBC("5c736dfa2cb7b88ce9893ba0312b9ad6".getBytes());
+            //TODO get key from database sqlite per day differs
+            mAESCBC = new AESCBC("255ef6bc65bc949028cd2d882a4144bd".getBytes());
 
             aes_test();
 
             // [START initialize_database_ref]
             rootDatabase = FirebaseDatabase.getInstance().getReference();
             //get reference
-            trydb();
+            update_measures();
             // [END initialize_database_ref]
 
             //TODO create a protected database
@@ -148,7 +138,7 @@ Log.d("Login", currentUser.getEmail());
 
     }
     //TODO visualize data
-    private  void trydb()
+    private  void update_measures()
     {
         DatabaseReference test = rootDatabase.child("realtime").child("measures");
         test.addValueEventListener(new ValueEventListener() {
@@ -160,7 +150,7 @@ Log.d("Login", currentUser.getEmail());
                 byte[] plaintext = new byte[0];
                 try {
                     byte[] headerSaltAndCipherText = Base64.decode(text, Base64.DEFAULT);
-                    plaintext = aesreal.decrypt(headerSaltAndCipherText);
+                    plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
                     String str = new String(plaintext, StandardCharsets.UTF_8);
                     String[] separated = str.split(",");
                     mRealDataTextView.setText("Temperature="+separated[0] +"\nHumidity" + separated[1]);
@@ -169,8 +159,6 @@ Log.d("Login", currentUser.getEmail());
                     Log.d("DATABASE","FAIL");
                     e.printStackTrace();
                 }
-
-
             }
 
             @Override
@@ -263,14 +251,6 @@ Log.d("Login", currentUser.getEmail());
 
     }
 
-/*
-    private void writeNewUser(String userId, String name, String email) {
-        //TODO save user IVs for data exchange
-
-        mDatabase.child("users").child(userId).child("email").setValue(email);
-        mDatabase.child("users").child(userId).child("username").setValue(name);
-    }
-*/
     //TODO Execute one and only Command
     private void ExecuteCmd()
     {
