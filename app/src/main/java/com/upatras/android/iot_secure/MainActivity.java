@@ -31,11 +31,17 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Iterator;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
+    // TODO Implements Classes for MEASURES DATA and Maintains COMMANDS
     private TextView mStatusTextView;
     private TextView mDetailTextView;
     private TextView mRealDataTextView;
@@ -51,7 +57,7 @@ public class MainActivity extends AppCompatActivity
     // [END declare_database_ref]
     private FirebaseUser currentUser;
 
-    private String CMDCounter = "";
+    private IOTData IOT = new IOTData();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +107,7 @@ public class MainActivity extends AppCompatActivity
             Log.d("Login", currentUser.getEmail());
 
 
+
             testButton = (Button) findViewById(R.id.buttonTest);
             testButton.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
@@ -113,7 +120,7 @@ public class MainActivity extends AppCompatActivity
             aes = new AESGCM("BD6BE71BF6C229E4684129527334CE6F".getBytes());
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("02c7bd67410dd84e19b81616700a2401".getBytes());
+            mAESCBC = new AESCBC("ea4c198a47e92db392b9ab23e62ebdce".getBytes());
 
             aes_test();
 
@@ -129,6 +136,7 @@ public class MainActivity extends AppCompatActivity
             MaintainCMDCounterCloud();
 
             //TODO create a protected database
+            /*
             String query = "select sqlite_version() AS sqlite_version";
             SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(":memory:", null);
             Cursor cursor = db.rawQuery(query, null);
@@ -137,6 +145,7 @@ public class MainActivity extends AppCompatActivity
                 sqliteVersion = cursor.getString(0);
             }
             Log.d("SQLite", sqliteVersion);
+            */
             //writeNewUser(currentUser.getUid(), "test",currentUser.getEmail());
         } else {
             signOut();
@@ -173,7 +182,7 @@ public class MainActivity extends AppCompatActivity
 
     //TODO visualize data
     private void update_measures() {
-        DatabaseReference measures = rootDatabase.child("realtime");
+        DatabaseReference measures = rootDatabase.child("realtime").child("measures");
         measures.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -186,18 +195,44 @@ public class MainActivity extends AppCompatActivity
                     time = t.getKey();
                 }
 
-                Log.d("DATABASE", time + "=" + cipher);
+                Log.e("DATABASE", time + "=" + cipher);
 
                 byte[] plaintext = new byte[0];
                 try {
                     byte[] headerSaltAndCipherText = Base64.decode(cipher, Base64.DEFAULT);
                     plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
                     String str = new String(plaintext, StandardCharsets.UTF_8);
-                    String[] separated = str.split(",");
-                    mRealDataTextView.setText("Temperature=" + separated[0] + "\nHumidity" + separated[1]);
-                    Log.d("DATABASE", str);
+                    //TODO update JSON structure!!!
+                    try {
+                        JSONObject obj = new JSONObject(str);
+                        Iterator<String> iter = obj.keys();
+                        while (iter.hasNext()) {
+                            String key = iter.next();
+                            try {
+                                Object value = obj.get(key);
+                                switch (key) {
+                                    case "temp":
+                                        IOT.setTemperature((int)value);
+                                        break;
+                                    case "hum":
+                                        IOT.setHumidity((int)value);
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                            } catch (JSONException e) {
+                                // Something went wrong!
+                            }
+                        }
+                    } catch (Throwable t) {
+                        Log.e("DATABASE", "Could not parse malformed JSON: \"" + str + "\"");
+                    }
+                    //TODO Update UI function
+                    mRealDataTextView.setText("TIME=" + time + "\nTemperature=" + IOT.getTemperature() + "\nHumidity=" + IOT.getHumidity());
+
                 } catch (Exception e) {
-                    Log.d("DATABASE", "FAIL");
+                    Log.e("DATABASE", "FAIL");
                     e.printStackTrace();
                 }
 
@@ -278,15 +313,17 @@ public class MainActivity extends AppCompatActivity
     }
 
     public void aes_test() {
-        String s = "hello world 1234435675478658657356346543";
+        String s = "The quick brown fox jumps over the lazy dog";
         byte[] b = s.getBytes();
-        Log.d("AES", Arrays.toString(b));
+
         try {
             byte[] cipher = aes.encrypt(b);
-            Log.d("AES", Arrays.toString(cipher));
+            String message = new String(cipher);
+            Log.e("AESGCM", message);
 
             byte[] plaintext = aes.decrypt(cipher);
-            Log.d("AES", Arrays.toString(plaintext));
+            String message1 = new String(plaintext);
+            Log.e("AESGCM", message1);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -298,27 +335,28 @@ public class MainActivity extends AppCompatActivity
         Toast.makeText(this, "Executing Command", Toast.LENGTH_SHORT).show();
         //TODO ask for cloud Command Counter IV
         //COMMAND IS MAINTAIN NO NEED FOR ASK
-        Log.d("COMMAND", CMDCounter);
+        Integer ask = IOT.getCMDCounterToggle();
+        Log.e("COMMAND", ask.toString());
+
         //TODO send encrypted data to cloud
+        rootDatabase.child("realtime").child("commands").child("AAD").setValue(currentUser.getUid());
 
-
-        //TODO read IoT response encrypt data
-
-
-        //TODO decrypt and read actual data
+        aes_test();
+        //TODO read IoT response ACK OR NACK
 
 
     }
 
-    //TODO ask cloud single DATA
+    //TODO UPDATE MULTIPLE COMMAND COUNTERS VALUE
     private void MaintainCMDCounterCloud() {
 
-        DatabaseReference MaintainCMDCounters = rootDatabase.child("users").child(currentUser.getUid()).child("CMDToggle");
+        DatabaseReference MaintainCMDCounters = rootDatabase.child("users").child(currentUser.getUid()).child("CMDCounters").child("CMDCounterToggle");
         MaintainCMDCounters.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                Integer test = dataSnapshot.getValue(Integer.class);
-                Log.d("COMMAND", test.toString());
+                Integer cmdCounter = dataSnapshot.getValue(Integer.class);
+                IOT.setCMDCounterToggle(cmdCounter);
+                Log.e("COMMAND", cmdCounter.toString());
             }
 
             @Override
@@ -328,4 +366,5 @@ public class MainActivity extends AppCompatActivity
         });
 
     }
+
 }
