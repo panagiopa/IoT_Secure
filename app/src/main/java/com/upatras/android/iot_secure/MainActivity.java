@@ -117,10 +117,10 @@ public class MainActivity extends AppCompatActivity
             });
 
             //GCM TEST
-            aes = new AESGCM("BD6BE71BF6C229E4684129527334CE6F".getBytes());
+            aes = new AESGCM("71776572747975696f70313233343536");
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("ea4c198a47e92db392b9ab23e62ebdce".getBytes());
+            mAESCBC = new AESCBC("5f28ae75d032f94c047b14f2369eaa5e");
 
             aes_test();
 
@@ -202,6 +202,7 @@ public class MainActivity extends AppCompatActivity
                     byte[] headerSaltAndCipherText = Base64.decode(cipher, Base64.DEFAULT);
                     plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
                     String str = new String(plaintext, StandardCharsets.UTF_8);
+                    Log.e("DATABASE", "STR = " + str);
                     //TODO update JSON structure!!!
                     try {
                         JSONObject obj = new JSONObject(str);
@@ -318,8 +319,8 @@ public class MainActivity extends AppCompatActivity
 
         try {
             byte[] cipher = aes.encrypt(b);
-            String message = new String(cipher);
-            Log.e("AESGCM", message);
+
+            Log.e("AESGCM", "Cipher=" + Arrays.toString(cipher));
 
             byte[] plaintext = aes.decrypt(cipher);
             String message1 = new String(plaintext);

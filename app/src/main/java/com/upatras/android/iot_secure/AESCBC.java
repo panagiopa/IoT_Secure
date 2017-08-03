@@ -1,5 +1,7 @@
 package com.upatras.android.iot_secure;
 
+import android.util.Log;
+
 import java.security.Key;
 import java.security.MessageDigest;
 import java.util.Arrays;
@@ -17,9 +19,12 @@ public class AESCBC extends OpenSSLDecryptor {
 
     byte[] bkey;
 
-    AESCBC(byte[] key) {
-        if (key.length != 32) throw new IllegalArgumentException();
-        this.bkey = key;
+    AESCBC(String key) {
+        this.bkey = hexStringToByteArray(key);
+       // if (key.length != 32) throw new IllegalArgumentException();
+        //this.bkey = key;
+       // Log.e("AESCBC","1O=" +String.format("%02x",this.bkey));
+        Log.e("AESCBC", "KEY="+Arrays.toString(this.bkey));
 
     }
 /*// TODO Create ENCRYPTION for AES CBC Mode
@@ -45,7 +50,7 @@ public class AESCBC extends OpenSSLDecryptor {
                 message, SALT_OFFSET, SALT_OFFSET + SALT_SIZE);
         byte[] encrypted = Arrays.copyOfRange(
                 message, CIPHERTEXT_OFFSET, message.length);
-        MessageDigest md5 = MessageDigest.getInstance("MD5");
+        MessageDigest md = MessageDigest.getInstance("SHA");
         Cipher aesCBC = Cipher.getInstance("AES/CBC/PKCS5Padding");
         // --- create key and IV  ---
 
@@ -53,7 +58,7 @@ public class AESCBC extends OpenSSLDecryptor {
         final byte[][] keyAndIV = EVP_BytesToKey(
                 KEY_SIZE_BITS / Byte.SIZE,
                 aesCBC.getBlockSize(),
-                md5,
+                md,
                 salt,
                 this.bkey,
                 ITERATIONS);
@@ -64,4 +69,6 @@ public class AESCBC extends OpenSSLDecryptor {
 
         return decrypted;
     }
+
+
 }
