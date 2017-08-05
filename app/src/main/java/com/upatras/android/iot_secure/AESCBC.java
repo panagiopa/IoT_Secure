@@ -50,7 +50,7 @@ public class AESCBC extends OpenSSLDecryptor {
                 message, SALT_OFFSET, SALT_OFFSET + SALT_SIZE);
         byte[] encrypted = Arrays.copyOfRange(
                 message, CIPHERTEXT_OFFSET, message.length);
-        MessageDigest md = MessageDigest.getInstance("SHA");
+        MessageDigest md = MessageDigest.getInstance("SHA256");
         Cipher aesCBC = Cipher.getInstance("AES/CBC/PKCS5Padding");
         // --- create key and IV  ---
 

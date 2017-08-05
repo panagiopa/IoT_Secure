@@ -8,12 +8,12 @@ public class IOTData {
 
     private int Temperature;
     private int Humidity;
-    private int CMDCounterToggle;
+    private String CMDCounterToggle;
 
     IOTData() {
         this.Temperature = 0;
         this.Humidity = 0;
-        this.CMDCounterToggle = 0;
+        this.CMDCounterToggle = "";
     }
 
     public void setTemperature(int s) {
@@ -32,11 +32,11 @@ public class IOTData {
         return this.Humidity;
     }
 
-    public void setCMDCounterToggle(int s){
+    public void setCMDCounterToggle(String s){
         this.CMDCounterToggle = s;
     }
 
-    public int getCMDCounterToggle(){
+    public String getCMDCounterToggle(){
         return  this.CMDCounterToggle;
     }
 

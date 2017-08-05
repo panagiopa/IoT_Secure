@@ -120,7 +120,7 @@ public class MainActivity extends AppCompatActivity
             aes = new AESGCM("71776572747975696f70313233343536");
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("5f28ae75d032f94c047b14f2369eaa5e");
+            mAESCBC = new AESCBC("546e02c64ae4ef4f8c87b3664f4ca321");
 
             aes_test();
 
@@ -203,7 +203,7 @@ public class MainActivity extends AppCompatActivity
                     plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
                     String str = new String(plaintext, StandardCharsets.UTF_8);
                     Log.e("DATABASE", "STR = " + str);
-                    //TODO update JSON structure!!!
+
                     try {
                         JSONObject obj = new JSONObject(str);
                         Iterator<String> iter = obj.keys();
@@ -314,37 +314,56 @@ public class MainActivity extends AppCompatActivity
     }
 
     public void aes_test() {
-        String s = "The quick brown fox jumps over the lazy dog";
-        byte[] b = s.getBytes();
 
-        try {
-            byte[] cipher = aes.encrypt(b);
-
-            Log.e("AESGCM", "Cipher=" + Arrays.toString(cipher));
-
-            byte[] plaintext = aes.decrypt(cipher);
-            String message1 = new String(plaintext);
-            Log.e("AESGCM", message1);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
     }
-
+    private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for ( int j = 0; j < bytes.length; j++ ) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
     //TODO Execute one and only Command
     private void ExecuteCmd() {
         Toast.makeText(this, "Executing Command", Toast.LENGTH_SHORT).show();
         //TODO ask for cloud Command Counter IV
         //COMMAND IS MAINTAIN NO NEED FOR ASK
-        Integer ask = IOT.getCMDCounterToggle();
+        String ask = IOT.getCMDCounterToggle();
         Log.e("COMMAND", ask.toString());
 
-        //TODO send encrypted data to cloud
-        rootDatabase.child("realtime").child("commands").child("AAD").setValue(currentUser.getUid());
+        String s = "The quick brown fox jumps over the lazy dog";
+        byte[] b = s.getBytes();
 
-        aes_test();
-        //TODO read IoT response ACK OR NACK
+        try {
+            byte[] add = "01234567890111111".getBytes();
+            byte[] cipher = aes.encrypt(b,ask,add);
 
+            JSONObject jo = new JSONObject();
+            jo.put("uid", currentUser.getUid());
+            Long tsLong = System.currentTimeMillis()/1000;
+            String ts = tsLong.toString();
+            jo.put("time", ts);
+            Log.e("AESGCM", jo.toString());
+
+            Log.e("AESGCM", "Cipher="+ Base64.encodeToString(cipher, Base64.DEFAULT));
+
+            byte[] plaintext = aes.decrypt(cipher,ask);
+            String message1 = new String(plaintext);
+            Log.e("AESGCM", message1);
+            //TODO send encrypted data to cloud
+            rootDatabase.child("realtime").child("commands").child("AAD").setValue(jo.toString());
+            rootDatabase.child("realtime").child("commands").child("COMMAND").setValue(Base64.encodeToString(cipher, Base64.DEFAULT));
+
+            //TODO read IoT response ACK OR NACK
+            //SET VARIABLE TO TRUE AND EXECUTE AFTER UPDATE
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -355,7 +374,7 @@ public class MainActivity extends AppCompatActivity
         MaintainCMDCounters.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                Integer cmdCounter = dataSnapshot.getValue(Integer.class);
+                String cmdCounter = dataSnapshot.getValue(String.class);
                 IOT.setCMDCounterToggle(cmdCounter);
                 Log.e("COMMAND", cmdCounter.toString());
             }
