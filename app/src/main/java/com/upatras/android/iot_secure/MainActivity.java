@@ -117,10 +117,10 @@ public class MainActivity extends AppCompatActivity
             });
 
             //GCM TEST
-            aes = new AESGCM("71776572747975696f70313233343536");
+            aes = new AESGCM("c9dbcc9cda62fc0223dce9ce321c635a");
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("546e02c64ae4ef4f8c87b3664f4ca321");
+            mAESCBC = new AESCBC("77c101718e7da3b63c3ab4d79963c64a");
 
             aes_test();
 
@@ -134,7 +134,7 @@ public class MainActivity extends AppCompatActivity
 
             //maintain Commands COunter
             MaintainCMDCounterCloud();
-
+            CommandResponse();
             //TODO create a protected database
             /*
             String query = "select sqlite_version() AS sqlite_version";
@@ -332,32 +332,47 @@ public class MainActivity extends AppCompatActivity
         Toast.makeText(this, "Executing Command", Toast.LENGTH_SHORT).show();
         //TODO ask for cloud Command Counter IV
         //COMMAND IS MAINTAIN NO NEED FOR ASK
-        String ask = IOT.getCMDCounterToggle();
+        String ask = IOT.getCMDCounter();
         Log.e("COMMAND", ask.toString());
 
-        String s = "The quick brown fox jumps over the lazy dog";
-        byte[] b = s.getBytes();
-
         try {
-            byte[] add = "01234567890111111".getBytes();
-            byte[] cipher = aes.encrypt(b,ask,add);
 
+            //CMD
+            JSONObject jocmd = new JSONObject();
+            jocmd.put("cmdid", 1);
+            jocmd.put("cmddata", "NULL");
+
+            String jsonstr1 = jocmd.toString();
+            jsonstr1 = jsonstr1.replace(" ","");
+            byte[] cmd = jsonstr1.getBytes();
+
+            //AAD
             JSONObject jo = new JSONObject();
             jo.put("uid", currentUser.getUid());
             Long tsLong = System.currentTimeMillis()/1000;
             String ts = tsLong.toString();
             jo.put("time", ts);
-            Log.e("AESGCM", jo.toString());
+            String jsonstr = jo.toString();
+            jsonstr = jsonstr.replace(" ","");
+
+            byte[] aad = jsonstr.getBytes();
+
+           // byte[] add = "0123456789".getBytes();
+            byte[] cipher = aes.encrypt(cmd,ask,aad);
+
+
 
             Log.e("AESGCM", "Cipher="+ Base64.encodeToString(cipher, Base64.DEFAULT));
 
-            byte[] plaintext = aes.decrypt(cipher,ask);
-            String message1 = new String(plaintext);
-            Log.e("AESGCM", message1);
+           // byte[] plaintext = aes.decrypt(cipher,ask);
+           // String message1 = new String(plaintext);
+           // Log.e("AESGCM", message1);
+
             //TODO send encrypted data to cloud
             rootDatabase.child("realtime").child("commands").child("AAD").setValue(jo.toString());
             rootDatabase.child("realtime").child("commands").child("COMMAND").setValue(Base64.encodeToString(cipher, Base64.DEFAULT));
-
+            //WAIT FOR A RESPONSE
+            IOT.setisSent(true);
             //TODO read IoT response ACK OR NACK
             //SET VARIABLE TO TRUE AND EXECUTE AFTER UPDATE
 
@@ -366,17 +381,45 @@ public class MainActivity extends AppCompatActivity
         }
 
     }
-
-    //TODO UPDATE MULTIPLE COMMAND COUNTERS VALUE
+    //TODO ONE RELATIME->COMMAND MUST IMPROVE SPEED NO NEED FOR A LOT OF CONNECTION FOR DATA!!!!!!!!
     private void MaintainCMDCounterCloud() {
 
-        DatabaseReference MaintainCMDCounters = rootDatabase.child("users").child(currentUser.getUid()).child("CMDCounters").child("CMDCounterToggle");
+        DatabaseReference MaintainCMDCounters = rootDatabase.child("users").child(currentUser.getUid()).child("CMDCounter");
         MaintainCMDCounters.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 String cmdCounter = dataSnapshot.getValue(String.class);
-                IOT.setCMDCounterToggle(cmdCounter);
-                Log.e("COMMAND", cmdCounter.toString());
+                IOT.setCMDCounter(cmdCounter);
+                Log.e("COMMAND", cmdCounter);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+    }
+
+    private void CommandResponse() {
+
+        DatabaseReference MaintainCMDCounters = rootDatabase.child("realtime").child("commands").child("COMMAND");
+        MaintainCMDCounters.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+               // if(IOT.getisSent() == true) //get response
+              //  {
+                    String cmdresp = dataSnapshot.getValue(String.class);
+                    if((cmdresp.equals("ACK"))||(cmdresp.equals("NULL"))||(cmdresp.equals("NACK")))
+                    {
+                        IOT.setCMDResponse(cmdresp);
+                        Log.e("COMMAND", cmdresp);
+                        //TODO Update UI
+                    }
+
+                   // IOT.setisSent(false);
+             //   }
+              //  Log.e("COMMAND", cmdresp);
             }
 
             @Override

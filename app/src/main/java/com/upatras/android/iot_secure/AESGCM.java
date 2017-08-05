@@ -57,7 +57,7 @@ Log.e("AESGCM",Integer.toString(cipher.getBlockSize()));
        // IvParameterSpec iv1 = new IvParameterSpec(iv);
        // assert iv.length == 12; // 12 byte = 96bits
         Log.e("AESGCM", "IV="+bytesToHex(keyAndIV[INDEX_IV]));
-        //byte[] tag = new byte[16];
+        byte[] tag = new byte[16];
 
         //Log.e("AESGCM", "ADD="+bytesToHex(add));
         cipher.init(Cipher.ENCRYPT_MODE, key,iv);
@@ -65,13 +65,14 @@ Log.e("AESGCM",Integer.toString(cipher.getBlockSize()));
         cipher.updateAAD(AAD);
         byte[] cipherText = cipher.doFinal(src);
 
-        Log.e("AESGCM", "cipherText= " + bytesToHex(cipherText));
-
+        Log.e("AESGCM", "cipherText= " + Base64.encodeToString(cipherText, Base64.DEFAULT));
+        System.arraycopy(cipherText, cipherText.length-16, tag, 0,16);
+        Log.e("AESGCM", "TAG="+bytesToHex(tag));
         assert cipherText.length == src.length + 16; // 16bytes = 128bits tag
         byte[] message = new byte[12 + src.length + 16]; // TODO check stackoverflow https://stackoverflow.com/questions/31851612/java-aes-gcm-nopadding-what-is-cipher-getiv-giving-me?noredirect=1&lq=1
         System.arraycopy(keyAndIV[INDEX_IV], 0, message, 0, 12);
         System.arraycopy(cipherText, 0, message, 12, cipherText.length);
-        return message;
+        return cipherText;
     }
 
     // the input comes from users
