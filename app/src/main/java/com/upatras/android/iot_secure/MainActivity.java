@@ -118,10 +118,10 @@ public class MainActivity extends AppCompatActivity
             });
 
             //GCM TEST
-            aes = new AESGCM("b8eff1d661a9336d69370d545bbe51e1");
+            aes = new AESGCM("b72e1df8e820b423b2e2674cacb7d6b8");
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("867da24114289bd4bb3dcb1d8bd6da8c");
+            mAESCBC = new AESCBC("5c619a60b74869616e40c58e51e26616");
 
             aes_test();
 
@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity
             update_measures();
             // [END initialize_database_ref]
 
-            getMeasures("2017", "8", "2", "01");
+           // getMeasures("2017", "8", "6", "22");
 
             //maintain Commands COunter
         //    MaintainCMDCounterCloud();
@@ -148,6 +148,8 @@ public class MainActivity extends AppCompatActivity
             Log.d("SQLite", sqliteVersion);
             */
             //writeNewUser(currentUser.getUid(), "test",currentUser.getEmail());
+
+
         } else {
             signOut();
         }
@@ -161,15 +163,51 @@ public class MainActivity extends AppCompatActivity
         measures.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
+
+
+                HashMap<String,Integer> x = new HashMap<>();
                 Iterable<DataSnapshot> it = dataSnapshot.getChildren();
                 String cipher = "";
                 String time = "";
-                Log.d("MASSIVE", time + "=" + cipher);
+                Log.e("MASSIVE", time + "=" + cipher);
                 for (DataSnapshot t : it) {
                     cipher = t.getValue(String.class);
                     time = t.getKey();
-                    Log.d("MASSIVE", time + "=" + cipher);
+
+                    byte[] headerSaltAndCipherText = Base64.decode(cipher, Base64.DEFAULT);
+                    try {
+                        byte[] plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
+                        String str = new String(plaintext, StandardCharsets.UTF_8);
+                        Log.e("MASSIVE", str);
+                        JSONObject obj = new JSONObject(str);
+                        Iterator<String> iter = obj.keys();
+                        while (iter.hasNext()) {
+                            String key = iter.next();
+                            try {
+                                Object value = obj.get(key);
+                                switch (key) {
+                                    case "temp":
+                                       // IOT.setTemperature((int)value);
+                                        break;
+                                    case "hum":
+                                       // IOT.setHumidity((int)value);
+                                        x.put(time,(int)value);
+                                        break;
+                                    default:
+                                        break;
+                                }
+
+                            } catch (JSONException e) {
+                                // Something went wrong!
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
+
+
+
             }
 
             @Override
@@ -411,6 +449,7 @@ public class MainActivity extends AppCompatActivity
                         if((value.equals("ACK"))||(value.equals("NULL"))||(value.equals("NACK")))
                         {
                             if(IOT.getisSent()==true) {
+
                                 IOT.setCMDResponse(value);
                                 Log.e("RESPONSE", "GET RESPONSE");
                                 //TODO Update UI
