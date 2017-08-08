@@ -53,10 +53,10 @@ Log.e("AESGCM",Integer.toString(cipher.getBlockSize()));
         //byte[] iv = {-90, 49, 70, -80, -1, 100, -85, 11, -63, -64, 93, -81};//,32,33,34,35};
         SecretKeySpec key = new SecretKeySpec(keyAndIV[INDEX_KEY], "AES");
         IvParameterSpec iv = new IvParameterSpec(keyAndIV[INDEX_IV]);
-        Log.e("AESGCM", "KEY="+bytesToHex(keyAndIV[INDEX_KEY]));
+     //   Log.e("AESGCM", "KEY="+bytesToHex(keyAndIV[INDEX_KEY]));
        // IvParameterSpec iv1 = new IvParameterSpec(iv);
        // assert iv.length == 12; // 12 byte = 96bits
-        Log.e("AESGCM", "IV="+bytesToHex(keyAndIV[INDEX_IV]));
+     //   Log.e("AESGCM", "IV="+bytesToHex(keyAndIV[INDEX_IV]));
         byte[] tag = new byte[16];
 
         //Log.e("AESGCM", "ADD="+bytesToHex(add));
@@ -76,9 +76,9 @@ Log.e("AESGCM",Integer.toString(cipher.getBlockSize()));
     }
 
     // the input comes from users
-    byte[] decrypt(byte[] message,String invocation) throws Exception {
-        //SecretKeySpec key = new SecretKeySpec(this.bkey, "AES");
-        if (message.length < 12 + 16) throw new IllegalArgumentException();
+    byte[] decrypt(byte[] cipherText,String invocation,byte[] AAD) throws Exception {
+
+        if (cipherText.length < 12 + 16) throw new IllegalArgumentException();
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
 
         byte[] salt = hexStringToByteArray(invocation);
@@ -91,31 +91,20 @@ Log.e("AESGCM",Integer.toString(cipher.getBlockSize()));
                 this.bkey,
                 ITERATIONS);
 
-        //byte[] iv = {-90, 49, 70, -80, -1, 100, -85, 11, -63, -64, 93, -81};//,32,33,34,35};
         SecretKeySpec key = new SecretKeySpec(keyAndIV[INDEX_KEY], "AES");
-
-       // byte[] iv = {-90, 49, 70, -80, -1, 100, -85, 11, -63, -64, 93, -81};//,32,33,34,35};
-       // IvParameterSpec iv1 = new IvParameterSpec(iv);
-       // assert iv.length == 12; // 12 byte = 96bits
-     //   Log.e("AESGCM", "IV="+Arrays.toString(iv));
-        //byte[] tag = new byte[16];
-     //   byte[] add = "012345678901".getBytes();
-    //    Log.e("AESGCM", "ADD="+Arrays.toString(iv));
-        GCMParameterSpec params = new GCMParameterSpec(128, message, 0, 12);
-
+        //IvParameterSpec iv = new IvParameterSpec(keyAndIV[INDEX_IV]);
+        byte[] ncipher = new byte[12 + cipherText.length];
+        System.arraycopy(keyAndIV[INDEX_IV], 0, ncipher, 0, 12);
+        System.arraycopy(cipherText, 0, ncipher, 12, cipherText.length);
+        GCMParameterSpec params = new GCMParameterSpec(128, ncipher, 0, 12);
         cipher.init(Cipher.DECRYPT_MODE, key, params);
-        byte[] add = "01234567890111111".getBytes();
-        cipher.updateAAD(add);
-       // byte[] tag = new byte[16];
-      //  System.arraycopy(message, message.length-16, tag, 0, 16);
-      //  byte[] test = new byte[message.length-16];
-      //  System.arraycopy(message, 0, test, 0, message.length-16);
-      //  Log.e("AESGCM", "TEST="+Arrays.toString(test));
-      //  cipher.updateAAD(tag);
-     //   Log.e("AESGCM", "TAG="+Arrays.toString(tag));
-        return cipher.doFinal(message, 12, message.length - 12);
-        //return cipher.doFinal(test);
+        cipher.updateAAD(AAD);
+
+        return cipher.doFinal(ncipher, 12, ncipher.length - 12);
+
+
     }
+
 
 
 }

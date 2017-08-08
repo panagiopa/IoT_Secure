@@ -118,10 +118,10 @@ public class MainActivity extends AppCompatActivity
             });
 
             //GCM TEST
-            aes = new AESGCM("b72e1df8e820b423b2e2674cacb7d6b8");
+            aes = new AESGCM("12f7d0345b526c4a944acb3e4590aa42");
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("5c619a60b74869616e40c58e51e26616");
+            mAESCBC = new AESCBC("ae55dd0250a2f2fde9dc8456e1cdb3bb");
 
             aes_test();
 
@@ -227,19 +227,31 @@ public class MainActivity extends AppCompatActivity
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Iterable<DataSnapshot> it = dataSnapshot.getChildren();
                 String cipher = "";
-                String time = "";
-
+                String MESCounter = "";
+                String AAD = "";
                 for (DataSnapshot t : it) {
-                    cipher = t.getValue(String.class);
-                    time = t.getKey();
-                }
+                    String key = "";
+                    key = t.getKey();
+                    if(key.equals("MESCounter"))
+                    {
+                        MESCounter = t.getValue(String.class);
+                    }
+                    else if(key.equals("DATA"))
+                    {
+                        cipher = t.getValue(String.class);
 
-                Log.e("DATABASE", time + "=" + cipher);
+                    }
+                    else if(key.equals("AAD"))
+                    {
+                        AAD = t.getValue(String.class);
+
+                    }
+                }
 
                 byte[] plaintext = new byte[0];
                 try {
-                    byte[] headerSaltAndCipherText = Base64.decode(cipher, Base64.DEFAULT);
-                    plaintext = mAESCBC.decrypt(headerSaltAndCipherText);
+                    byte[] bcipher = Base64.decode(cipher, Base64.DEFAULT);
+                    plaintext = aes.decrypt(bcipher,MESCounter,AAD.getBytes());
                     String str = new String(plaintext, StandardCharsets.UTF_8);
                     Log.e("DATABASE", "STR = " + str);
 
@@ -269,7 +281,7 @@ public class MainActivity extends AppCompatActivity
                         Log.e("DATABASE", "Could not parse malformed JSON: \"" + str + "\"");
                     }
                     //TODO Update UI function
-                    mRealDataTextView.setText("TIME=" + time + "\nTemperature=" + IOT.getTemperature() + "\nHumidity=" + IOT.getHumidity());
+                    mRealDataTextView.setText("TIME="  + "\nTemperature=" + IOT.getTemperature() + "\nHumidity=" + IOT.getHumidity());
 
                 } catch (Exception e) {
                     Log.e("DATABASE", "FAIL");
