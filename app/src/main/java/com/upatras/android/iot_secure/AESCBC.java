@@ -2,12 +2,10 @@ package com.upatras.android.iot_secure;
 
 import android.util.Log;
 
-import java.security.Key;
 import java.security.MessageDigest;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -21,13 +19,12 @@ public class AESCBC extends OpenSSLDecryptor {
 
     AESCBC(String key) {
         this.bkey = hexStringToByteArray(key);
-       // if (key.length != 32) throw new IllegalArgumentException();
-        //this.bkey = key;
-       // Log.e("AESCBC","1O=" +String.format("%02x",this.bkey));
+        if (this.bkey.length != 16) throw new IllegalArgumentException();
+
         Log.e("AESCBC", "KEY="+Arrays.toString(this.bkey));
 
     }
-/*// TODO Create ENCRYPTION for AES CBC Mode
+/*// TODO Create ENCRYPTION for AES CBC Mode for sqlite database and bluetooth
     // the output is sent to users
     byte[] encrypt(byte[] src) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");

@@ -19,8 +19,10 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -47,10 +49,10 @@ public class MainActivity extends AppCompatActivity
     private TextView mDetailTextView;
     private TextView mRealDataTextView;
     private TextView mEmailTextView;
-    private Button testButton;
+    private ToggleButton mToggleButton;
 
 
-    private AESGCM aes;
+    private AESGCM mAESGCM;
     private AESCBC mAESCBC;
     private FirebaseAuth mAuth;
     // [START declare_database_ref]
@@ -109,21 +111,26 @@ public class MainActivity extends AppCompatActivity
 
 
 
-            testButton = (Button) findViewById(R.id.buttonTest);
-            testButton.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) {
-                    // Code here executes on main thread after user presses button
-                    ExecuteCmd();
+            mToggleButton = (ToggleButton) findViewById(R.id.toggleButton);
+            mToggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    if (isChecked) {
+                        // The toggle is enabled
+                        ExecuteCmd();
+                        mToggleButton.setEnabled(false);
+                    } else {
+                        // The toggle is disabled
+                        ExecuteCmd();
+                        mToggleButton.setEnabled(false);
+                    }
                 }
             });
 
             //GCM TEST
-            aes = new AESGCM("12f7d0345b526c4a944acb3e4590aa42");
+            mAESGCM = new AESGCM("c7753ebfaceca06f973eb20c4ca348bf");
 
             //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("ae55dd0250a2f2fde9dc8456e1cdb3bb");
-
-            aes_test();
+            mAESCBC = new AESCBC("c7753ebfaceca06f973eb20c4ca348bf");
 
             // [START initialize_database_ref]
             rootDatabase = FirebaseDatabase.getInstance().getReference();
@@ -227,11 +234,12 @@ public class MainActivity extends AppCompatActivity
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Iterable<DataSnapshot> it = dataSnapshot.getChildren();
                 String cipher = "";
+                String time="";
                 String MESCounter = "";
                 String AAD = "";
                 for (DataSnapshot t : it) {
-                    String key = "";
-                    key = t.getKey();
+
+                    String key = t.getKey();
                     if(key.equals("MESCounter"))
                     {
                         MESCounter = t.getValue(String.class);
@@ -244,6 +252,29 @@ public class MainActivity extends AppCompatActivity
                     else if(key.equals("AAD"))
                     {
                         AAD = t.getValue(String.class);
+                        try {
+                            JSONObject obj = new JSONObject(AAD);
+                            Iterator<String> iter = obj.keys();
+                            while (iter.hasNext()) {
+                                String jkey = iter.next();
+                                try {
+                                    Object value = obj.get(jkey);
+                                    switch (jkey) {
+                                        case "time":
+                                            time = value.toString();
+                                            break;
+                                        default:
+                                            break;
+                                    }
+
+                                } catch (JSONException e) {
+                                    // Something went wrong!
+                                }
+                            }
+                        } catch (Throwable t1) {
+                            Log.e("DATABASE", "Could not parse malformed JSON: \"" + AAD + "\"");
+                        }
+
 
                     }
                 }
@@ -251,7 +282,7 @@ public class MainActivity extends AppCompatActivity
                 byte[] plaintext = new byte[0];
                 try {
                     byte[] bcipher = Base64.decode(cipher, Base64.DEFAULT);
-                    plaintext = aes.decrypt(bcipher,MESCounter,AAD.getBytes());
+                    plaintext = mAESGCM.decrypt(bcipher,MESCounter,AAD.getBytes());
                     String str = new String(plaintext, StandardCharsets.UTF_8);
                     Log.e("DATABASE", "STR = " + str);
 
@@ -281,7 +312,7 @@ public class MainActivity extends AppCompatActivity
                         Log.e("DATABASE", "Could not parse malformed JSON: \"" + str + "\"");
                     }
                     //TODO Update UI function
-                    mRealDataTextView.setText("TIME="  + "\nTemperature=" + IOT.getTemperature() + "\nHumidity=" + IOT.getHumidity());
+                    mRealDataTextView.setText("TIME=" + time + "\nTemperature=" + IOT.getTemperature() + "\nHumidity=" + IOT.getHumidity());
 
                 } catch (Exception e) {
                     Log.e("DATABASE", "FAIL");
@@ -364,10 +395,7 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    public void aes_test() {
 
-
-    }
     private final static char[] hexArray = "0123456789ABCDEF".toCharArray();
     public static String bytesToHex(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
@@ -410,8 +438,7 @@ public class MainActivity extends AppCompatActivity
 
                 byte[] aad = jsonstr.getBytes();
 
-                // byte[] add = "0123456789".getBytes();
-                byte[] cipher = aes.encrypt(cmd, ask, aad);
+                byte[] cipher = mAESGCM.encrypt(cmd, ask, aad);
 
 
                 Log.e("AESGCM", "Cipher=" + Base64.encodeToString(cipher, Base64.DEFAULT));
@@ -425,7 +452,7 @@ public class MainActivity extends AppCompatActivity
                 result.put("COMMAND", Base64.encodeToString(cipher, Base64.DEFAULT));
                 result.put("CMDCounter", ask);
 
-                rootDatabase.child("realtime").child("commands").updateChildren(result);
+                rootDatabase.child("realtime").child("commands").setValue(result);
                 //WAIT FOR A RESPONSE
                 IOT.setisSent(true);
 
@@ -461,9 +488,9 @@ public class MainActivity extends AppCompatActivity
                         if((value.equals("ACK"))||(value.equals("NULL"))||(value.equals("NACK")))
                         {
                             if(IOT.getisSent()==true) {
-
                                 IOT.setCMDResponse(value);
                                 Log.e("RESPONSE", "GET RESPONSE");
+                                mToggleButton.setEnabled(true);
                                 //TODO Update UI
                                 IOT.setisSent(false);
                             }
