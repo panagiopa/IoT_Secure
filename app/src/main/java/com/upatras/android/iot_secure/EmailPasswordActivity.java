@@ -19,20 +19,22 @@ package com.upatras.android.iot_secure;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
+
+import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.ParcelUuid;
+
 import android.support.annotation.NonNull;
-import android.support.v4.app.FragmentActivity;
+
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,19 +44,15 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Set;
-
-
-
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class EmailPasswordActivity extends BaseActivity implements
         View.OnClickListener {
 
-
     private static final String TAG = "EmailPassword";
+
+    private String query = "";
 
     private BluetoothAdapter mBluetoothAdapter;
 
@@ -66,9 +64,8 @@ public class EmailPasswordActivity extends BaseActivity implements
     // [START declare_auth]
     private FirebaseAuth mAuth;
     // [END declare_auth]
-    private ListView myListView;
-    private Set<BluetoothDevice> pairedDevices;
-    private ArrayAdapter<String> BTArrayAdapter;
+    public String email="";
+    private String password="";
 
     // Intent request codes
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
@@ -80,6 +77,8 @@ public class EmailPasswordActivity extends BaseActivity implements
      * String buffer for outgoing messages
      */
     private StringBuffer mOutStringBuffer;
+
+    private SQLiteDatabase db;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -101,11 +100,16 @@ public class EmailPasswordActivity extends BaseActivity implements
         // [START initialize_auth]
         mAuth = FirebaseAuth.getInstance();
         // [END initialize_auth]
-// take an instance of BluetoothAdapter - Bluetooth radio
 
-      //  myListView = (ListView)findViewById(R.id.listView1);
-     //   BTArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
-    //    myListView.setAdapter(BTArrayAdapter);
+        db = openOrCreateDatabase("iotdb.db", Context.MODE_PRIVATE, null);
+        /*
+        String sq = "SELECT aes,used_day FROM measures_aes";
+        Cursor cursor = db.rawQuery(sq, null);
+
+        if (cursor.moveToNext()) {
+            Log.e("SQL",cursor.getString(1));
+        }
+        */
 
 
     }
@@ -123,12 +127,17 @@ public class EmailPasswordActivity extends BaseActivity implements
     //TODO PAIR DEVICE!!!!
     private void createAccount(String email, String password,View v) {
 
+          if (!validateForm()) {
+               return;
+           }
+
+       // this.email = "testere1@test.com";// email;
+      //  this.password = "password123"; //password;
+
+        this.email = email;
+        this.password = password;
 
 
-
-      //    if (!validateForm()) {
-       //        return;
-      //     }
         // take an instance of BluetoothAdapter - Bluetooth radio
         ///BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -167,8 +176,6 @@ public class EmailPasswordActivity extends BaseActivity implements
 
             Intent serverIntent = new Intent(this, DeviceListActivity.class);
             startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-
-
 
             mStatusTextView.setText("WAIT FOR IOT PAIRING!!!");
 
@@ -294,22 +301,56 @@ public class EmailPasswordActivity extends BaseActivity implements
                     Log.e("PAIR",readMessage);
                     if(readMessage.equals("pair"))
                     {
+                        JSONObject jResult = new JSONObject();
+                        try {
+                            jResult.putOpt("email", EmailPasswordActivity.this.email);
+                            jResult.putOpt("pass", EmailPasswordActivity.this.password);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        createDB();
                         //TODO sent email and password for account JSON format
-                        sendMessagePair("asfdsf");
-                        showProgressDialog("Exchange keys Please wait...");
+                        sendMessagePair(jResult.toString());
+                        showProgressDialog("Pairing process Please wait...");
+
                     }
                     else if(readMessage.equals("done"))
                     {
+                        //TODO DONE
                         hideProgressDialog();
 
 
                     }
+                    else if(readMessage.equals("fail"))
+                    {
+                        //TODO FAIL PAIRING
+                        hideProgressDialog();
+
+                    }
+                    else if(readMessage.equals("exists"))
+                    {
+                        //TODO EXISTS ACCOUNT
+                    }
                     else
                     {
-                        //TODO CAPTURES KEYS FROM JSON FORMAT TO DB
-
-
-
+                        if(readMessage.equals("measures"))
+                        {
+                            EmailPasswordActivity.this.query = "INSERT INTO measures_aes(aes,used_day) VALUES(?,?)";
+                        }
+                        else if(readMessage.equals("commands"))
+                        {
+                            EmailPasswordActivity.this.query = "INSERT INTO commands_aes(aes,used_day) VALUES(?,?)";
+                        }
+                        try {
+                            JSONObject obj = new JSONObject(readMessage);
+                            //TODO CAPTURES KEYS FROM JSON FORMAT TO DB
+                            db.execSQL(EmailPasswordActivity.this.query,new String []{(String)obj.get("key"),(String)obj.get("date")});
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }catch(SQLException mSQLException) {
+                            // here you can catch all the exceptions
+                            mSQLException.printStackTrace();
+                        }
                     }
 
 
@@ -388,7 +429,6 @@ public class EmailPasswordActivity extends BaseActivity implements
         // Attempt to connect to the device
         mChatService.connect(device, secure);
 
-
     }
 
 
@@ -406,10 +446,11 @@ public class EmailPasswordActivity extends BaseActivity implements
 
         // Check that there's actually something to send
         if (message.length() > 0) {
-            Toast.makeText(this, "SENDING", Toast.LENGTH_SHORT).show();
+                byte[] send = message.getBytes();
+                mChatService.write(send);
+        //    }
+            //Toast.makeText(this, "SENDING", Toast.LENGTH_SHORT).show();
             // Get the message bytes and tell the BluetoothChatService to write
-            byte[] send = message.getBytes();
-            mChatService.write(send);
 
             // Reset out string buffer to zero and clear the edit text field
             mOutStringBuffer.setLength(0);
@@ -490,6 +531,13 @@ public class EmailPasswordActivity extends BaseActivity implements
         // [END send_email_verification]
     }
 
+    private void createDB(){
+        db.execSQL("DROP TABLE IF EXISTS measures_aes");
+        db.execSQL("CREATE TABLE measures_aes (aes VARCHAR(256) PRIMARY KEY NOT NULL,used_day DATE NOT NULL )");
+        db.execSQL("DROP TABLE IF EXISTS commands_aes");
+        db.execSQL("CREATE TABLE commands_aes (aes VARCHAR(256) PRIMARY KEY NOT NULL,used_day DATE NOT NULL )");
+
+    }
     private boolean validateForm() {
         boolean valid = true;
 
@@ -550,7 +598,7 @@ public class EmailPasswordActivity extends BaseActivity implements
             signOut();
         } else if (i == R.id.verify_email_button) {
            // sendEmailVerification();
-            sendMessagePair("SKATASFDS");
+            //sendMessagePair("SKATASFDS");
         }
     }
 

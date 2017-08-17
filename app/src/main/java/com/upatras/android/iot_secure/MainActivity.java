@@ -1,5 +1,6 @@
 package com.upatras.android.iot_secure;
 
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -24,6 +25,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -37,7 +41,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -61,6 +66,10 @@ public class MainActivity extends AppCompatActivity
     private FirebaseUser currentUser;
 
     private IOTData IOT = new IOTData();
+
+    private SQLiteDatabase db;
+
+    private String CURRENT_AES_KEY_GCM="";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,8 +118,6 @@ public class MainActivity extends AppCompatActivity
                 mEmailTextView.setText(currentUser.getEmail());
             Log.d("Login", currentUser.getEmail());
 
-
-
             mToggleButton = (ToggleButton) findViewById(R.id.toggleButton);
             mToggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -126,8 +133,18 @@ public class MainActivity extends AppCompatActivity
                 }
             });
 
+
+
+            String userid = bytesToHex(currentUser.getUid().getBytes());
+
+            Integer rnd = 9577;
+            String hexkey = userid.substring(0,28) + String.format("%04x", rnd);
+            String salt = userid.substring(28,44);
+            Log.e("SQL",salt);
+            Log.e("SQL",hexkey);
+
             //GCM TEST
-            mAESGCM = new AESGCM("d6cc41cba0f2834cc30e5e7732ed341f");
+            AESGCM aesdb = new AESGCM(hexkey);
 
             //TODO get key from database sqlite per day differs
             mAESCBC = new AESCBC("c7753ebfaceca06f973eb20c4ca348bf");
@@ -144,17 +161,30 @@ public class MainActivity extends AppCompatActivity
         //    MaintainCMDCounterCloud();
             CommandResponseMaintain();
             //TODO create a protected database
-            /*
-            String query = "select sqlite_version() AS sqlite_version";
-            SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(":memory:", null);
-            Cursor cursor = db.rawQuery(query, null);
-            String sqliteVersion = "";
+
+            db = openOrCreateDatabase("iotdb.db", Context.MODE_PRIVATE, null);
+            // Get the date today using Calendar object.
+            Date today = Calendar.getInstance().getTime();
+
+            DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+
+            Cursor cursor = db.rawQuery("SELECT aes FROM commands_aes WHERE used_day=?", new String[]{df.format(today)});
+            String cipher = "";
             if (cursor.moveToNext()) {
-                sqliteVersion = cursor.getString(0);
+                cipher = cursor.getString(0);
             }
-            Log.d("SQLite", sqliteVersion);
-            */
-            //writeNewUser(currentUser.getUid(), "test",currentUser.getEmail());
+
+            Log.e("SQL","Cipher=" + cipher);
+            byte[] bcipher = Base64.decode(cipher, Base64.DEFAULT);
+            try {
+                byte[] plaintext = aesdb.decrypt(bcipher,salt,df.format(today).getBytes());
+                String str = new String(plaintext, StandardCharsets.UTF_8);
+                mAESGCM = new AESGCM(str);
+                Log.e("SQL",str);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e("SQL",e.toString());
+            }
 
 
         } else {
