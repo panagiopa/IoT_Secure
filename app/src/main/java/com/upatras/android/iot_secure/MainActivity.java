@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity
             });
 
             //GCM TEST
-            mAESGCM = new AESGCM("c7753ebfaceca06f973eb20c4ca348bf");
+            mAESGCM = new AESGCM("d6cc41cba0f2834cc30e5e7732ed341f");
 
             //TODO get key from database sqlite per day differs
             mAESCBC = new AESCBC("c7753ebfaceca06f973eb20c4ca348bf");
