@@ -296,10 +296,19 @@ public class EmailPasswordActivity extends BaseActivity implements
                     {
                         //TODO sent email and password for account JSON format
                         sendMessagePair("asfdsf");
+                        showProgressDialog("Exchange keys Please wait...");
+                    }
+                    else if(readMessage.equals("done"))
+                    {
+                        hideProgressDialog();
+
+
                     }
                     else
                     {
                         //TODO CAPTURES KEYS FROM JSON FORMAT TO DB
+
+
 
                     }
 
@@ -414,7 +423,7 @@ public class EmailPasswordActivity extends BaseActivity implements
             return;
         }
 
-        showProgressDialog();
+        showProgressDialog(getString(R.string.loading));
 
         // [START sign_in_with_email]
         mAuth.signInWithEmailAndPassword(email, password)

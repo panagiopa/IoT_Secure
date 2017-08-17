@@ -9,10 +9,10 @@ public class BaseActivity extends AppCompatActivity {
     @VisibleForTesting
     public ProgressDialog mProgressDialog;
 
-    public void showProgressDialog() {
+    public void showProgressDialog(String msg) {
         if (mProgressDialog == null) {
             mProgressDialog = new ProgressDialog(this);
-            mProgressDialog.setMessage(getString(R.string.loading));
+            mProgressDialog.setMessage(msg);
             mProgressDialog.setIndeterminate(true);
         }
 
