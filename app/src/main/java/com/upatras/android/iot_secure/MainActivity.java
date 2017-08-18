@@ -1,6 +1,7 @@
 package com.upatras.android.iot_secure;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -8,6 +9,8 @@ import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 
+import android.support.v7.app.AlertDialog;
+import android.text.InputType;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
@@ -21,11 +24,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import java.text.DateFormat;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
@@ -70,6 +75,7 @@ public class MainActivity extends AppCompatActivity
     private SQLiteDatabase db;
 
     private String CURRENT_AES_KEY_GCM="";
+    private static Integer RAND_PASS;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,117 +86,190 @@ public class MainActivity extends AppCompatActivity
         // [END initialize_auth]
         currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            setContentView(R.layout.activity_main);
-            Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-            setSupportActionBar(toolbar);
 
-            FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-            fab.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                            .setAction("Action", null).show();
-                }
-            });
+            //TODO PROMPT get 4 DIGIT PASSWORD
+            boolean ret=false;
+            try
+            {
+                Intent i = getIntent();
+                String rndstr = i.getStringExtra("digit4");
 
-            DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-            ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                    this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-            drawer.setDrawerListener(toggle);
-            toggle.syncState();
+            //    Log.e("SKATA=",rndstr);
+            //    if(rndstr.isEmpty())
+           //     {
+                    /*
+                    //PROMPT
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Please enter the 4 digit password:");
+                    builder.setCancelable(false);
+// Set up the input
+                    final EditText input = new EditText(this);
+                    //TODO PASSWORD INPUT
+// Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                    input.setInputType(InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    builder.setView(input);
+                    builder.setCancelable(false);
+// Set up the buttons
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String rnd = input.getText().toString();
+                            //  Intent main = new Intent(EmailPasswordActivity.this,MainActivity.class);
+                            //   main.putExtra("digit4", rnd);
+                            //   EmailPasswordActivity.this.finish(); //nohistory = true no need to call
+                            //   startActivity(main);
+                        }
+                    });
+                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                            signOut();
+                        }
+                    });
 
-            NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-            navigationView.setNavigationItemSelectedListener(this);
+                    builder.show();
+*/
+             //   }
+                RAND_PASS = Integer.parseInt(rndstr);
+                //9577;
+                ret = getAESGCMKey();
+            }
+            catch (NumberFormatException nfe)
+            {
+                // bad data - set to sentinel
+                ret = false;
+            }
 
-            View headerView = navigationView.getHeaderView(0);
+            if(ret ==true) {
+                mAESGCM = new AESGCM(CURRENT_AES_KEY_GCM);
+                setContentView(R.layout.activity_main);
+                Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+                setSupportActionBar(toolbar);
 
-            // Views
-            mEmailTextView = (TextView) headerView.findViewById(R.id.textUserEmail);
-            mStatusTextView = (TextView) findViewById(R.id.status);
-            mDetailTextView = (TextView) findViewById(R.id.detail);
-            mRealDataTextView = (TextView) findViewById(R.id.textrealtest);
-
-            mStatusTextView.setText(getString(R.string.emailpassword_status_fmt,
-                    currentUser.getEmail(), currentUser.isEmailVerified()));
-            mDetailTextView.setText(getString(R.string.firebase_status_fmt, currentUser.getUid()));
-
-            if (mEmailTextView != null)
-                mEmailTextView.setText(currentUser.getEmail());
-            Log.d("Login", currentUser.getEmail());
-
-            mToggleButton = (ToggleButton) findViewById(R.id.toggleButton);
-            mToggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                    if (isChecked) {
-                        // The toggle is enabled
-                        ExecuteCmd();
-                        mToggleButton.setEnabled(false);
-                    } else {
-                        // The toggle is disabled
-                        ExecuteCmd();
-                        mToggleButton.setEnabled(false);
+                FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+                fab.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                                .setAction("Action", null).show();
                     }
-                }
-            });
+                });
+
+                DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+                ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                        this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                drawer.setDrawerListener(toggle);
+                toggle.syncState();
+
+                NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+                navigationView.setNavigationItemSelectedListener(this);
+
+                View headerView = navigationView.getHeaderView(0);
+
+                // Views
+                mEmailTextView = (TextView) headerView.findViewById(R.id.textUserEmail);
+                mStatusTextView = (TextView) findViewById(R.id.status);
+                mDetailTextView = (TextView) findViewById(R.id.detail);
+                mRealDataTextView = (TextView) findViewById(R.id.textrealtest);
+
+                mStatusTextView.setText(getString(R.string.emailpassword_status_fmt,
+                        currentUser.getEmail(), currentUser.isEmailVerified()));
+                mDetailTextView.setText(getString(R.string.firebase_status_fmt, currentUser.getUid()));
+
+                if (mEmailTextView != null)
+                    mEmailTextView.setText(currentUser.getEmail());
+                Log.d("Login", currentUser.getEmail());
+
+                mToggleButton = (ToggleButton) findViewById(R.id.toggleButton);
+                mToggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        if (isChecked) {
+                            // The toggle is enabled
+                            ExecuteCmd();
+                            mToggleButton.setEnabled(false);
+                        } else {
+                            // The toggle is disabled
+                            ExecuteCmd();
+                            mToggleButton.setEnabled(false);
+                        }
+                    }
+                });
+
+
+                //TODO get key from database sqlite per day differs
+                mAESCBC = new AESCBC("c7753ebfaceca06f973eb20c4ca348bf");
+
+                // [START initialize_database_ref]
+                rootDatabase = FirebaseDatabase.getInstance().getReference();
+                //get reference
+                update_measures();
+                // [END initialize_database_ref]
+
+                CommandResponseMaintain();
+
+            }else
+            {
+
+                AlertDialog.Builder builder1 = new AlertDialog.Builder(this);
+                builder1.setMessage("Incorrect password");
+                builder1.setCancelable(true);
+
+                builder1.setPositiveButton(
+                        "OK",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                                dialog.cancel();
+                                signOut();
+                            }
+                        });
+
+                AlertDialog alert11 = builder1.create();
+                alert11.show();
 
 
 
-            String userid = bytesToHex(currentUser.getUid().getBytes());
-
-            Integer rnd = 9577;
-            String hexkey = userid.substring(0,28) + String.format("%04x", rnd);
-            String salt = userid.substring(28,44);
-            Log.e("SQL",salt);
-            Log.e("SQL",hexkey);
-
-            //GCM TEST
-            AESGCM aesdb = new AESGCM(hexkey);
-
-            //TODO get key from database sqlite per day differs
-            mAESCBC = new AESCBC("c7753ebfaceca06f973eb20c4ca348bf");
-
-            // [START initialize_database_ref]
-            rootDatabase = FirebaseDatabase.getInstance().getReference();
-            //get reference
-            update_measures();
-            // [END initialize_database_ref]
-
-           // getMeasures("2017", "8", "6", "22");
-
-            //maintain Commands COunter
-        //    MaintainCMDCounterCloud();
-            CommandResponseMaintain();
-            //TODO create a protected database
-
-            db = openOrCreateDatabase("iotdb.db", Context.MODE_PRIVATE, null);
-            // Get the date today using Calendar object.
-            Date today = Calendar.getInstance().getTime();
-
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-
-            Cursor cursor = db.rawQuery("SELECT aes FROM commands_aes WHERE used_day=?", new String[]{df.format(today)});
-            String cipher = "";
-            if (cursor.moveToNext()) {
-                cipher = cursor.getString(0);
             }
-
-            Log.e("SQL","Cipher=" + cipher);
-            byte[] bcipher = Base64.decode(cipher, Base64.DEFAULT);
-            try {
-                byte[] plaintext = aesdb.decrypt(bcipher,salt,df.format(today).getBytes());
-                String str = new String(plaintext, StandardCharsets.UTF_8);
-                mAESGCM = new AESGCM(str);
-                Log.e("SQL",str);
-            } catch (Exception e) {
-                e.printStackTrace();
-                Log.e("SQL",e.toString());
-            }
-
 
         } else {
             signOut();
         }
 
+    }
+
+    private boolean getAESGCMKey(){
+        String userid = bytesToHex(currentUser.getUid().getBytes());
+        String hexkey = userid.substring(0,28) + String.format("%04x", this.RAND_PASS);
+        String salt = userid.substring(28,44);
+        Log.e("SQL",salt);
+        Log.e("SQL",hexkey);
+        AESGCM aesdb = new AESGCM(hexkey);
+        db = openOrCreateDatabase("iotdb.db", Context.MODE_PRIVATE, null);
+        // Get the date today using Calendar object.
+        Date today = Calendar.getInstance().getTime();
+
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+
+        Cursor cursor = db.rawQuery("SELECT aes FROM commands_aes WHERE used_day=?", new String[]{df.format(today)});
+        String cipher = "";
+        if (cursor.moveToNext()) {
+            cipher = cursor.getString(0);
+        }
+
+        Log.e("SQL","Cipher=" + cipher);
+        byte[] bcipher = Base64.decode(cipher, Base64.DEFAULT);
+        try {
+            byte[] plaintext = aesdb.decrypt(bcipher,salt,df.format(today).getBytes());
+            String str = new String(plaintext, StandardCharsets.UTF_8);
+            CURRENT_AES_KEY_GCM = str;
+            Log.e("SQL",str);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e("SQL",e.toString());
+            return false;
+
+        }
     }
 
 

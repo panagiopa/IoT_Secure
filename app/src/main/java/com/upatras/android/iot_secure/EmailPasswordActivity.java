@@ -21,6 +21,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -31,6 +32,8 @@ import android.os.Message;
 
 import android.support.annotation.NonNull;
 
+import android.support.v7.app.AlertDialog;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -573,9 +576,36 @@ public class EmailPasswordActivity extends BaseActivity implements
 
             findViewById(R.id.verify_email_button).setEnabled(!user.isEmailVerified());
 
-            Intent main = new Intent(this,MainActivity.class);
-            this.finish(); //nohistory = true no need to call
-            startActivity(main);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Please enter the 4 digit password:");
+            builder.setCancelable(false);
+// Set up the input
+            final EditText input = new EditText(this);
+// Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+            input.setInputType(InputType.TYPE_CLASS_PHONE | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            builder.setView(input);
+            builder.setCancelable(false);
+// Set up the buttons
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    String rnd = input.getText().toString();
+                    Intent main = new Intent(EmailPasswordActivity.this,MainActivity.class);
+                    main.putExtra("digit4", rnd);
+                    EmailPasswordActivity.this.finish(); //nohistory = true no need to call
+                    startActivity(main);
+                }
+            });
+            builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.cancel();
+                    signOut();
+                }
+            });
+
+            builder.show();
+
         } else {
             mStatusTextView.setText(R.string.signed_out);
             mDetailTextView.setText(null);
