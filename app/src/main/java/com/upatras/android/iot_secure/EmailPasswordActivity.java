@@ -140,7 +140,6 @@ public class EmailPasswordActivity extends BaseActivity implements
         this.email = email;
         this.password = password;
 
-
         // take an instance of BluetoothAdapter - Bluetooth radio
         ///BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -152,28 +151,6 @@ public class EmailPasswordActivity extends BaseActivity implements
         }else {
 
 
-            if (!mBluetoothAdapter.isEnabled()) {
-                if (!mBluetoothAdapter.isDiscovering()) {
-                    Intent discoverableIntent =
-                            new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-                    discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-                    startActivity(discoverableIntent);
-                    Toast.makeText(EmailPasswordActivity.this, "Bluetooth is discovering waiting...",
-                            Toast.LENGTH_LONG).show();
-                }
-            } else {
-                if (!mBluetoothAdapter.isDiscovering()) {
-                    Intent discoverableIntent =
-                            new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-                    discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-                    startActivity(discoverableIntent);
-                    Toast.makeText(EmailPasswordActivity.this, "Bluetooth is discovering waiting...",
-                            Toast.LENGTH_LONG).show();
-                }
-            }
-
-        }
-      //  ensureDiscoverable()
             // Initialize the BluetoothChatService to perform bluetooth connections
             mChatService = new BluetoothChatService(this, mHandler);
 
@@ -182,90 +159,9 @@ public class EmailPasswordActivity extends BaseActivity implements
 
             mStatusTextView.setText("WAIT FOR IOT PAIRING!!!");
 
-
-            return;
-            /*
-
-            Log.d(TAG, "createAccount:" + email);
-
-            // get paired devices
-            pairedDevices = myBluetoothAdapter.getBondedDevices();
-
-            // put it's one to the adapter
-
-            for(BluetoothDevice device : pairedDevices)
-
-                BTArrayAdapter.add(device.getName()+ "\n" + device.getAddress());
-
-            Object[] devices = (Object []) pairedDevices.toArray();
-            BluetoothDevice device = (BluetoothDevice) devices[0];
-            ParcelUuid[] uuids = device.getUuids();
-            BluetoothSocket socket = null;
-            try {
-                socket = device.createRfcommSocketToServiceRecord(uuids[0].getUuid());
-                socket.connect();
-                outputStream = socket.getOutputStream();
-                inStream = socket.getInputStream();
-
-                final int BUFFER_SIZE = 1024;
-                byte[] buffer = new byte[BUFFER_SIZE];
-                int bytes = 0;
-                int b = BUFFER_SIZE;
-
-                try {
-
-                    bytes = inStream.read(buffer, bytes, BUFFER_SIZE - bytes);
-                    String message = new String(buffer);
-                    Log.e("CATCH",message);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-
-            Toast.makeText(getApplicationContext(),"Show Paired Devices",
-
-                    Toast.LENGTH_SHORT).show();
-
+            ensureDiscoverable();
         }
-        */
-      //  if (!validateForm()) {
-     //       return;
-     //   }
 
-        //showProgressDialog();
-        //hideProgressDialog();
-
-/*
-        // [START create_user_with_email]
-        mAuth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Log.d(TAG, "createUserWithEmail:success");
-                            FirebaseUser user = mAuth.getCurrentUser();
-                            updateUI(user);
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Log.w(TAG, "createUserWithEmail:failure", task.getException());
-                            Toast.makeText(EmailPasswordActivity.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                            updateUI(null);
-                        }
-
-                        // [START_EXCLUDE]
-                        hideProgressDialog();
-                        // [END_EXCLUDE]
-                    }
-                });
-        // [END create_user_with_email]
-        */
     }
 
     /**
@@ -321,6 +217,9 @@ public class EmailPasswordActivity extends BaseActivity implements
                     {
                         //TODO DONE
                         hideProgressDialog();
+                        Toast.makeText(EmailPasswordActivity.this, "PAIRING COMPLETE SUCCESSFULLY",
+                                Toast.LENGTH_LONG).show();
+
 
 
                     }
@@ -339,10 +238,12 @@ public class EmailPasswordActivity extends BaseActivity implements
                         if(readMessage.equals("measures"))
                         {
                             EmailPasswordActivity.this.query = "INSERT INTO measures_aes(aes,used_day) VALUES(?,?)";
+
                         }
                         else if(readMessage.equals("commands"))
                         {
                             EmailPasswordActivity.this.query = "INSERT INTO commands_aes(aes,used_day) VALUES(?,?)";
+
                         }
                         try {
                             JSONObject obj = new JSONObject(readMessage);
@@ -366,12 +267,15 @@ public class EmailPasswordActivity extends BaseActivity implements
                 //        Toast.makeText(activity, "Connected to "
                 //                + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
                 //    }
+                    Log.e("SKATA","Pair???");
                     break;
                 case Constants.MESSAGE_TOAST:
                   //  if (null != activity) {
                   //      Toast.makeText(activity, msg.getData().getString(Constants.TOAST),
                   //              Toast.LENGTH_SHORT).show();
                   //  }
+                    Log.e("SKATA","Pair FAIL???");
+                    hideProgressDialog();
                     break;
             }
         }

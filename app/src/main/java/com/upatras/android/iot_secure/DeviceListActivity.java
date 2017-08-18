@@ -24,6 +24,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -62,7 +63,9 @@ public class DeviceListActivity extends Activity {
      * Newly discovered devices
      */
     private ArrayAdapter<String> mNewDevicesArrayAdapter;
-
+    private Handler handler;
+    private ArrayAdapter<String> pairedDevicesArrayAdapter;
+    private ListView pairedListView;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,12 +88,12 @@ public class DeviceListActivity extends Activity {
 
         // Initialize array adapters. One for already paired devices and
         // one for newly discovered devices
-        ArrayAdapter<String> pairedDevicesArrayAdapter =
+        pairedDevicesArrayAdapter =
                 new ArrayAdapter<String>(this, R.layout.device_name);
         mNewDevicesArrayAdapter = new ArrayAdapter<String>(this, R.layout.device_name);
 
         // Find and set up the ListView for paired devices
-        ListView pairedListView = (ListView) findViewById(R.id.paired_devices);
+        pairedListView = (ListView) findViewById(R.id.paired_devices);
         pairedListView.setAdapter(pairedDevicesArrayAdapter);
         pairedListView.setOnItemClickListener(mDeviceClickListener);
 
@@ -110,9 +113,10 @@ public class DeviceListActivity extends Activity {
         // Get the local Bluetooth adapter
         mBtAdapter = BluetoothAdapter.getDefaultAdapter();
 
-        // Get a set of currently paired devices
-        Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
 
+        Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
+        pairedListView.clearChoices();
+        pairedDevicesArrayAdapter.clear();
         // If there are paired devices, add each one to the ArrayAdapter
         if (pairedDevices.size() > 0) {
             findViewById(R.id.title_paired_devices).setVisibility(View.VISIBLE);
@@ -123,6 +127,30 @@ public class DeviceListActivity extends Activity {
             String noDevices = getResources().getText(R.string.none_paired).toString();
             pairedDevicesArrayAdapter.add(noDevices);
         }
+
+        handler = new Handler();
+        int delay = 2000; //milliseconds
+        handler.postDelayed(new Runnable(){
+            public void run(){
+                //do something
+                // Get a set of currently paired devices
+                Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
+                pairedListView.clearChoices();
+                pairedDevicesArrayAdapter.clear();
+                // If there are paired devices, add each one to the ArrayAdapter
+                if (pairedDevices.size() > 0) {
+                    findViewById(R.id.title_paired_devices).setVisibility(View.VISIBLE);
+                    for (BluetoothDevice device : pairedDevices) {
+                        pairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                    }
+                } else {
+                    String noDevices = getResources().getText(R.string.none_paired).toString();
+                    pairedDevicesArrayAdapter.add(noDevices);
+                }
+                handler.postDelayed(this, 2000);
+            }
+        }, delay);
+
     }
 
     @Override
@@ -156,9 +184,10 @@ public class DeviceListActivity extends Activity {
             mBtAdapter.cancelDiscovery();
         }
 
-        // Request discover from BluetoothAdapter
-        mBtAdapter.startDiscovery();
+
     }
+
+
 
     /**
      * The on-click listener for all devices in the ListViews
@@ -190,6 +219,7 @@ public class DeviceListActivity extends Activity {
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+
             String action = intent.getAction();
 
             // When discovery finds a device
@@ -209,6 +239,7 @@ public class DeviceListActivity extends Activity {
                     mNewDevicesArrayAdapter.add(noDevices);
                 }
             }
+
         }
     };
 

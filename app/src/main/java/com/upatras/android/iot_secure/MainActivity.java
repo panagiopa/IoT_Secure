@@ -22,7 +22,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
+
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -30,7 +30,7 @@ import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import java.text.DateFormat;
-import java.text.NumberFormat;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
@@ -77,6 +77,8 @@ public class MainActivity extends AppCompatActivity
     private String CURRENT_AES_KEY_GCM="";
     private static Integer RAND_PASS;
 
+    private AlertDialog alertinc;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -87,147 +89,142 @@ public class MainActivity extends AppCompatActivity
         currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
 
-            //TODO PROMPT get 4 DIGIT PASSWORD
-            boolean ret=false;
-            try
-            {
-                Intent i = getIntent();
-                String rndstr = i.getStringExtra("digit4");
+            //INIT UI
+            setContentView(R.layout.activity_main);
+            Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+            setSupportActionBar(toolbar);
 
-            //    Log.e("SKATA=",rndstr);
-            //    if(rndstr.isEmpty())
-           //     {
-                    /*
-                    //PROMPT
-                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                    builder.setTitle("Please enter the 4 digit password:");
-                    builder.setCancelable(false);
-// Set up the input
-                    final EditText input = new EditText(this);
-                    //TODO PASSWORD INPUT
-// Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
-                    input.setInputType(InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                    builder.setView(input);
-                    builder.setCancelable(false);
-// Set up the buttons
-                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            String rnd = input.getText().toString();
-                            //  Intent main = new Intent(EmailPasswordActivity.this,MainActivity.class);
-                            //   main.putExtra("digit4", rnd);
-                            //   EmailPasswordActivity.this.finish(); //nohistory = true no need to call
-                            //   startActivity(main);
-                        }
-                    });
-                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
+            FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+            fab.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                            .setAction("Action", null).show();
+                }
+            });
+
+            DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+            ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                    this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+            drawer.setDrawerListener(toggle);
+            toggle.syncState();
+
+            NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+            navigationView.setNavigationItemSelectedListener(this);
+
+            View headerView = navigationView.getHeaderView(0);
+
+            // Views
+            mEmailTextView = (TextView) headerView.findViewById(R.id.textUserEmail);
+            mStatusTextView = (TextView) findViewById(R.id.status);
+            mDetailTextView = (TextView) findViewById(R.id.detail);
+            mRealDataTextView = (TextView) findViewById(R.id.textrealtest);
+
+            mStatusTextView.setText(getString(R.string.emailpassword_status_fmt,
+                    currentUser.getEmail(), currentUser.isEmailVerified()));
+            mDetailTextView.setText(getString(R.string.firebase_status_fmt, currentUser.getUid()));
+
+            if (mEmailTextView != null)
+                mEmailTextView.setText(currentUser.getEmail());
+            Log.d("Login", currentUser.getEmail());
+
+            mToggleButton = (ToggleButton) findViewById(R.id.toggleButton);
+            mToggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    if (isChecked) {
+                        // The toggle is enabled
+                        ExecuteCmd();
+                        mToggleButton.setEnabled(false);
+                    } else {
+                        // The toggle is disabled
+                        ExecuteCmd();
+                        mToggleButton.setEnabled(false);
+                    }
+                }
+            });
+
+            AlertDialog.Builder builderinc = new AlertDialog.Builder(this);
+            builderinc.setMessage("Incorrect password");
+            builderinc.setCancelable(true);
+
+            builderinc.setPositiveButton(
+                    "OK",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int id) {
                             dialog.cancel();
                             signOut();
                         }
                     });
 
-                    builder.show();
-*/
-             //   }
+            alertinc = builderinc.create();
+
+
+            //TODO PROMPT get 4 DIGIT PASSWORD
+
+            try
+            {
+                Intent i = getIntent();
+                String rndstr = i.getStringExtra("digit4");
+
                 RAND_PASS = Integer.parseInt(rndstr);
                 //9577;
-                ret = getAESGCMKey();
+                boolean ret = getAESGCMKey();
+
+                if(ret ==true) {
+                    initFunctionallity();
+
+                }else
+                {
+                    alertinc.show();
+                }
             }
             catch (NumberFormatException nfe)
             {
+                Log.e("SKATA","SKATA1");
                 // bad data - set to sentinel
-                ret = false;
-            }
-
-            if(ret ==true) {
-                mAESGCM = new AESGCM(CURRENT_AES_KEY_GCM);
-                setContentView(R.layout.activity_main);
-                Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-                setSupportActionBar(toolbar);
-
-                FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-                fab.setOnClickListener(new View.OnClickListener() {
+                //PROMPT
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Please enter the 4 digit password:");
+                builder.setCancelable(false);
+                // Set up the input
+                final EditText input = new EditText(this);
+                //TODO PASSWORD INPUT
+                // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                input.setInputType(InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                builder.setView(input);
+                builder.setCancelable(false);
+                // Set up the buttons
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(View view) {
-                        Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                                .setAction("Action", null).show();
-                    }
-                });
+                    public void onClick(DialogInterface dialog, int which) {
+                        String rnd = input.getText().toString();
+                        RAND_PASS = Integer.parseInt(rnd);
+                        boolean ret = getAESGCMKey();
+                        if(ret ==true) {
+                            initFunctionallity();
 
-                DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-                ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                        this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-                drawer.setDrawerListener(toggle);
-                toggle.syncState();
 
-                NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-                navigationView.setNavigationItemSelectedListener(this);
-
-                View headerView = navigationView.getHeaderView(0);
-
-                // Views
-                mEmailTextView = (TextView) headerView.findViewById(R.id.textUserEmail);
-                mStatusTextView = (TextView) findViewById(R.id.status);
-                mDetailTextView = (TextView) findViewById(R.id.detail);
-                mRealDataTextView = (TextView) findViewById(R.id.textrealtest);
-
-                mStatusTextView.setText(getString(R.string.emailpassword_status_fmt,
-                        currentUser.getEmail(), currentUser.isEmailVerified()));
-                mDetailTextView.setText(getString(R.string.firebase_status_fmt, currentUser.getUid()));
-
-                if (mEmailTextView != null)
-                    mEmailTextView.setText(currentUser.getEmail());
-                Log.d("Login", currentUser.getEmail());
-
-                mToggleButton = (ToggleButton) findViewById(R.id.toggleButton);
-                mToggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                        if (isChecked) {
-                            // The toggle is enabled
-                            ExecuteCmd();
-                            mToggleButton.setEnabled(false);
-                        } else {
-                            // The toggle is disabled
-                            ExecuteCmd();
-                            mToggleButton.setEnabled(false);
+                        }else
+                        {
+                            alertinc.show();
                         }
+
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                        signOut();
                     }
                 });
 
-
-                //TODO get key from database sqlite per day differs
-                mAESCBC = new AESCBC("c7753ebfaceca06f973eb20c4ca348bf");
-
-                // [START initialize_database_ref]
-                rootDatabase = FirebaseDatabase.getInstance().getReference();
-                //get reference
-                update_measures();
-                // [END initialize_database_ref]
-
-                CommandResponseMaintain();
-
-            }else
+                builder.show();
+            }
+            catch (Exception e)
             {
-
-                AlertDialog.Builder builder1 = new AlertDialog.Builder(this);
-                builder1.setMessage("Incorrect password");
-                builder1.setCancelable(true);
-
-                builder1.setPositiveButton(
-                        "OK",
-                        new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int id) {
-                                dialog.cancel();
-                                signOut();
-                            }
-                        });
-
-                AlertDialog alert11 = builder1.create();
-                alert11.show();
-
-
+                e.printStackTrace();
+                alertinc.show();
 
             }
 
@@ -235,6 +232,23 @@ public class MainActivity extends AppCompatActivity
             signOut();
         }
 
+    }
+
+
+    private void initFunctionallity()
+    {
+        mAESGCM = new AESGCM(CURRENT_AES_KEY_GCM);
+
+        //TODO get key from database sqlite per day differs
+        mAESCBC = new AESCBC("c7753ebfaceca06f973eb20c4ca348bf");
+
+        // [START initialize_database_ref]
+        rootDatabase = FirebaseDatabase.getInstance().getReference();
+        //get reference
+        update_measures();
+        // [END initialize_database_ref]
+
+        CommandResponseMaintain();
     }
 
     private boolean getAESGCMKey(){
