@@ -20,9 +20,11 @@ import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
@@ -50,13 +52,19 @@ import com.google.firebase.auth.FirebaseUser;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static android.bluetooth.BluetoothDevice.ACTION_BOND_STATE_CHANGED;
+
 public class EmailPasswordActivity extends BaseActivity implements
         View.OnClickListener {
 
     private static final String TAG = "EmailPassword";
 
     private String query = "";
-
+    private String address = "";
     private BluetoothAdapter mBluetoothAdapter;
 
     private TextView mStatusTextView;
@@ -139,7 +147,9 @@ public class EmailPasswordActivity extends BaseActivity implements
 
         this.email = email;
         this.password = password;
-
+        // Register for broadcasts when discovery has finished
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        this.registerReceiver(mReceiver, filter);
         // take an instance of BluetoothAdapter - Bluetooth radio
         ///BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -150,6 +160,10 @@ public class EmailPasswordActivity extends BaseActivity implements
             return;
         }else {
 
+            if (!mBluetoothAdapter.isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            }
 
             // Initialize the BluetoothChatService to perform bluetooth connections
             mChatService = new BluetoothChatService(this, mHandler);
@@ -157,9 +171,8 @@ public class EmailPasswordActivity extends BaseActivity implements
             Intent serverIntent = new Intent(this, DeviceListActivity.class);
             startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
 
-            mStatusTextView.setText("WAIT FOR IOT PAIRING!!!");
+            mStatusTextView.setText("IOT PAIRING!!!");
 
-            ensureDiscoverable();
         }
 
     }
@@ -177,13 +190,16 @@ public class EmailPasswordActivity extends BaseActivity implements
                         case BluetoothChatService.STATE_CONNECTED:
                     //        setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
                        //     mConversationArrayAdapter.clear();
+                            mStatusTextView.setText("STATE_CONNECTED");
                             break;
                         case BluetoothChatService.STATE_CONNECTING:
                       //      setStatus(R.string.title_connecting);
+                            mStatusTextView.setText("STATE_CONNECTING");
                             break;
                         case BluetoothChatService.STATE_LISTEN:
                         case BluetoothChatService.STATE_NONE:
                         //    setStatus(R.string.title_not_connected);
+                            mStatusTextView.setText("STATE_NONE");
                             break;
                     }
                     break;
@@ -232,6 +248,9 @@ public class EmailPasswordActivity extends BaseActivity implements
                     else if(readMessage.equals("exists"))
                     {
                         //TODO EXISTS ACCOUNT
+                        Toast.makeText(EmailPasswordActivity.this, "EMAIL ALREADY EXISTS",
+                                Toast.LENGTH_LONG).show();
+                        hideProgressDialog();
                     }
                     else
                     {
@@ -267,14 +286,14 @@ public class EmailPasswordActivity extends BaseActivity implements
                 //        Toast.makeText(activity, "Connected to "
                 //                + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
                 //    }
-                    Log.e("SKATA","Pair???");
+                    Log.e("PAIR","NAME = " + msg.getData().getString(Constants.DEVICE_NAME));
                     break;
                 case Constants.MESSAGE_TOAST:
                   //  if (null != activity) {
                   //      Toast.makeText(activity, msg.getData().getString(Constants.TOAST),
                   //              Toast.LENGTH_SHORT).show();
                   //  }
-                    Log.e("SKATA","Pair FAIL???");
+                    Log.e("PAIR","TOAST = " +msg.getData().getString(Constants.TOAST));
                     hideProgressDialog();
                     break;
             }
@@ -287,6 +306,8 @@ public class EmailPasswordActivity extends BaseActivity implements
         if (mChatService != null) {
             mChatService.stop();
         }
+        // Unregister broadcast listeners
+        this.unregisterReceiver(mReceiver);
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -295,17 +316,16 @@ public class EmailPasswordActivity extends BaseActivity implements
                 // When DeviceListActivity returns with a device to connect
                 if (resultCode == Activity.RESULT_OK) {
                     connectDevice(data, true);
-                   // Toast.makeText(this, "Executing Pairing request wait...",
-                   //         Toast.LENGTH_LONG).show();
-                   // Log.e("PAIR",data.toString());
+                    Log.e("PAIR","RESULT_OK");
                 }
                 break;
             case REQUEST_CONNECT_DEVICE_INSECURE:
                 // When DeviceListActivity returns with a device to connect
                 if (resultCode == Activity.RESULT_OK) {
-                   // connectDevice(data, false);
+                    connectDevice(data, false);
                     Toast.makeText(this, "Please wait for pair first",
                             Toast.LENGTH_SHORT).show();
+                    Log.e("PAIR","REQUEST_CONNECT_DEVICE_INSECURE");
                 }
                 break;
             case REQUEST_ENABLE_BT:
@@ -320,21 +340,37 @@ public class EmailPasswordActivity extends BaseActivity implements
                             Toast.LENGTH_SHORT).show();
                    // getActivity().finish();
                 }
+            default:
+                Log.e("PAIR","CODE:" + Integer.toString(requestCode));
         }
     }
 
     private void connectDevice(Intent data, boolean secure) {
         // Get the device MAC address
-        String address = data.getExtras()
+        address = data.getExtras()
                 .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
 
         // Initialize the buffer for outgoing messages
         mOutStringBuffer = new StringBuffer("");
 
+        //IF IS NOT PAIR PAIR!!
         // Get the BluetoothDevice object
         BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-        // Attempt to connect to the device
-        mChatService.connect(device, secure);
+
+        //if is not pair execute pairing!!!
+        if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
+            Log.e("PAIR",address);
+            device.createBond();
+            Toast.makeText(this, "Executing Pairing request wait...",
+                    Toast.LENGTH_LONG).show();
+            mStatusTextView.setText("PLease accept Pairing on IOT device");
+        }
+        else // If it's already paired connect
+        {
+            // Attempt to connect to the device
+            mChatService.connect(device, secure);
+        }
+
 
     }
 
@@ -364,6 +400,45 @@ public class EmailPasswordActivity extends BaseActivity implements
           //  mOutEditText.setText(mOutStringBuffer);
         }
     }
+
+
+    /**
+     * The BroadcastReceiver that listens for discovered devices and changes the title when
+     * discovery is finished
+     */
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            // When discovery finds a device
+            if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
+                // Get the BluetoothDevice object from the Intent
+                Log.e("PAIR","PAIR OK???????");
+                BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+
+                //if is not pair execute pairing!!!
+                if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    Log.e("PAIR",address);
+                    final Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            //Do something after 100ms
+                            BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+                            mChatService.connect(device, true);
+                        }
+                    }, 1000);
+
+                }
+                else if (device.getBondState() == BluetoothDevice.BOND_BONDING) {
+                    //mChatService.connect(device, true);
+                    //device.createBond();
+                }
+
+            }
+        }
+    };
 
     private void signIn(String email, String password) {
         Log.d(TAG, "signIn:" + email);
@@ -445,6 +520,14 @@ public class EmailPasswordActivity extends BaseActivity implements
         db.execSQL("CREATE TABLE commands_aes (aes VARCHAR(256) PRIMARY KEY NOT NULL,used_day DATE NOT NULL )");
 
     }
+    public static boolean isEmailValid(String email) {
+        String expression = "^[\\w\\.-]+@([\\w\\-]+\\.)+[A-Z]{2,4}$";
+        Pattern pattern = Pattern.compile(expression, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(email);
+        return matcher.matches();
+    }
+
+    //TODO validate for strong password!!!!!
     private boolean validateForm() {
         boolean valid = true;
 
@@ -452,7 +535,12 @@ public class EmailPasswordActivity extends BaseActivity implements
         if (TextUtils.isEmpty(email)) {
             mEmailField.setError("Required.");
             valid = false;
-        } else {
+        }
+        else  if (!isEmailValid(email)) {
+            mEmailField.setError("Not a valid email address.");
+            valid = false;
+        }
+        else {
             mEmailField.setError(null);
         }
 
@@ -460,7 +548,12 @@ public class EmailPasswordActivity extends BaseActivity implements
         if (TextUtils.isEmpty(password)) {
             mPasswordField.setError("Required.");
             valid = false;
-        } else {
+        }
+        else if (TextUtils.getTrimmedLength(password) < 6){
+            mPasswordField.setError("Password length must be greater than 6.");
+            valid = false;
+        }
+        else {
             mPasswordField.setError(null);
         }
 
@@ -536,15 +629,4 @@ public class EmailPasswordActivity extends BaseActivity implements
         }
     }
 
-    /**
-     * Makes this device discoverable for 300 seconds (5 minutes).
-     */
-    private void ensureDiscoverable() {
-        if (mBluetoothAdapter.getScanMode() !=
-                BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
-            Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-            startActivity(discoverableIntent);
-        }
-    }
 }
