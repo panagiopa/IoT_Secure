@@ -110,7 +110,7 @@ public class DeviceListActivity extends Activity {
         mBtAdapter = BluetoothAdapter.getDefaultAdapter();
 
         // Get a set of currently paired devices
-        Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
+ /*       Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
 
         // If there are paired devices, add each one to the ArrayAdapter
         if (pairedDevices.size() > 0) {
@@ -122,6 +122,8 @@ public class DeviceListActivity extends Activity {
             String noDevices = getResources().getText(R.string.none_paired).toString();
             pairedDevicesArrayAdapter.add(noDevices);
         }
+
+*/
         doDiscovery();
     }
 
@@ -149,7 +151,7 @@ public class DeviceListActivity extends Activity {
         setTitle(R.string.scanning);
 
         // Turn on sub-title for new devices
-        findViewById(R.id.title_new_devices).setVisibility(View.VISIBLE);
+ //       findViewById(R.id.title_new_devices).setVisibility(View.VISIBLE);
 
         // If we're already discovering, stop it
         if (mBtAdapter.isDiscovering()) {
@@ -198,8 +200,9 @@ public class DeviceListActivity extends Activity {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 // If it's already paired, skip it, because it's been listed already
                 if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                   // mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
                 }
+                mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
                 // When discovery is finished, change the Activity title
             } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 setProgressBarIndeterminateVisibility(false);

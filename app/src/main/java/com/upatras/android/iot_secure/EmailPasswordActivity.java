@@ -53,6 +53,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -357,19 +358,26 @@ public class EmailPasswordActivity extends BaseActivity implements
         // Get the BluetoothDevice object
         BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
 
-        //if is not pair execute pairing!!!
+        //execute pairing!!!
         if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
             Log.e("PAIR",address);
             device.createBond();
-            Toast.makeText(this, "Executing Pairing request wait...",
-                    Toast.LENGTH_LONG).show();
-            mStatusTextView.setText("PLease accept Pairing on IOT device");
         }
-        else // If it's already paired connect
+        else // If it's already paired remove bond and pair again
         {
-            // Attempt to connect to the device
-            mChatService.connect(device, secure);
+            Log.e("PAIR","REMOVE");
+            try {
+                Method m = device.getClass()
+                        .getMethod("removeBond", (Class[]) null);
+                m.invoke(device, (Object[]) null);
+            } catch (Exception e) {
+                Log.e("PAIR", e.getMessage());
+            }
+
         }
+        Toast.makeText(this, "Executing Pairing request wait...",
+                Toast.LENGTH_LONG).show();
+        mStatusTextView.setText("PLease accept Pairing on IOT device");
 
 
     }
@@ -414,26 +422,42 @@ public class EmailPasswordActivity extends BaseActivity implements
             // When discovery finds a device
             if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
                 // Get the BluetoothDevice object from the Intent
-                Log.e("PAIR","PAIR OK???????");
+
                 BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
 
                 //if is not pair execute pairing!!!
                 if (device.getBondState() == BluetoothDevice.BOND_BONDED) {
-                    Log.e("PAIR",address);
+                    Log.e("PAIR","SUPER" + address);
                     final Handler handler = new Handler();
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() {
                             //Do something after 100ms
-                            BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-                            mChatService.connect(device, true);
+                            Log.e("PAIR", String.format("FUNC%d", mChatService.getState()));
+                            if(mChatService.getState() != 3)
+                            {
+                                BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+                                mChatService.connect(device, true);
+                                handler.postDelayed(this, 2000);
+                            }
+
                         }
-                    }, 1000);
+                    }, 1000); //1 sec delay
 
                 }
                 else if (device.getBondState() == BluetoothDevice.BOND_BONDING) {
                     //mChatService.connect(device, true);
                     //device.createBond();
+                    Log.e("PAIR","BOND_BONDING");
+                }
+                else
+                {
+                    // Attempt to pair
+                    device.createBond();
+                    Log.e("PAIR", String.valueOf(device.getBondState()));
+                    Toast.makeText(EmailPasswordActivity.this, "Pairing Failed",
+                            Toast.LENGTH_SHORT).show();
+
                 }
 
             }

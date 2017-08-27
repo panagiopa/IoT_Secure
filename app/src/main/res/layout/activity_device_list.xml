@@ -37,7 +37,7 @@
         android:layout_weight="1"
         android:stackFromBottom="true"
         />
-
+<!--
     <TextView
         android:id="@+id/title_new_devices"
         android:layout_width="match_parent"
@@ -48,7 +48,7 @@
         android:textColor="#fff"
         android:visibility="gone"
         />
-
+-->
     <ListView
         android:id="@+id/new_devices"
         android:layout_width="match_parent"
